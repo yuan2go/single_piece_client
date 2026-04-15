@@ -5,7 +5,7 @@ import logging
 from typing import Any
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
-from PyQt6.QtGui import QColor, QPainter, QPen
+from PyQt6.QtGui import QColor, QPainter, QPen, QPolygonF
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -25,6 +25,7 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -84,10 +85,22 @@ I18N = {
         'disk_free': '剩余磁盘 / Disk Free GB',
         'config_preview_placeholder': '算法配置预览显示在这里...',
         'ready': '就绪 / Ready',
-        'config_dialog_title': '配置弹窗 / Settings',
-        'save': '保存',
+        'config_dialog_title': '商用设置面板 / Settings',
+        'save': '确定',
         'cancel': '取消',
-        'help_text': '当前版本支持：可配置矩阵、实时版本展示、包裹轮廓绘制。',
+        'apply': '应用',
+        'tab_general': '基础设置',
+        'tab_ui': '界面设置',
+        'tab_display': '显示设置',
+        'help_text': '当前版本支持：商用设置面板、矩阵热力显示、活跃包裹高亮与流向指示。',
+        'flow_direction': '流向 / Flow',
+        'matrix_status': '矩阵状态 / Matrix Status',
+        'group_station': '站点设置',
+        'group_matrix': '矩阵设置',
+        'group_display': '显示选项',
+        'group_language': '语言切换',
+        'show_index': '显示行列编号',
+        'show_arrow': '显示流向箭头',
     },
     'en': {
         'window_title': 'Single Piece Client',
@@ -137,44 +150,117 @@ I18N = {
         'disk_free': 'Disk Free GB',
         'config_preview_placeholder': 'Algorithm config preview will appear here...',
         'ready': 'Ready',
-        'config_dialog_title': 'Settings',
-        'save': 'Save',
+        'config_dialog_title': 'Commercial Settings Panel',
+        'save': 'OK',
         'cancel': 'Cancel',
-        'help_text': 'Current version supports configurable matrix, realtime version display, and parcel polygon drawing.',
+        'apply': 'Apply',
+        'tab_general': 'General',
+        'tab_ui': 'UI',
+        'tab_display': 'Display',
+        'help_text': 'Current version supports commercial settings panel, matrix heatmap, active parcel highlight, and flow direction indicators.',
+        'flow_direction': 'Flow',
+        'matrix_status': 'Matrix Status',
+        'group_station': 'Station Settings',
+        'group_matrix': 'Matrix Settings',
+        'group_display': 'Display Options',
+        'group_language': 'Language',
+        'show_index': 'Show row/col index',
+        'show_arrow': 'Show flow arrow',
     },
 }
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent: QWidget | None, rows: int, cols: int, language: str, show_aux: bool, show_coord: bool) -> None:
+    def __init__(self, parent: QWidget | None, rows: int, cols: int, language: str, show_aux: bool, show_coord: bool, show_index: bool, show_arrow: bool) -> None:
         super().__init__(parent)
         self.setModal(True)
+        self.resize(560, 420)
+        root = QVBoxLayout(self)
+        self.tabs = QTabWidget()
+        root.addWidget(self.tabs)
+
         self.rows_spin = QSpinBox(); self.rows_spin.setRange(1, 100); self.rows_spin.setValue(rows)
         self.cols_spin = QSpinBox(); self.cols_spin.setRange(1, 100); self.cols_spin.setValue(cols)
         self.language_combo = QComboBox(); self.language_combo.addItems(['中文', 'English']); self.language_combo.setCurrentIndex(0 if language == 'zh' else 1)
         self.show_aux_checkbox = QCheckBox(); self.show_aux_checkbox.setChecked(show_aux)
         self.show_coord_checkbox = QCheckBox(); self.show_coord_checkbox.setChecked(show_coord)
-        self.form = QFormLayout(self)
-        self.form.addRow(self.rows_spin)
-        self.form.addRow(self.cols_spin)
-        self.form.addRow(self.language_combo)
-        self.form.addRow(self.show_aux_checkbox)
-        self.form.addRow(self.show_coord_checkbox)
-        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        self.show_index_checkbox = QCheckBox(); self.show_index_checkbox.setChecked(show_index)
+        self.show_arrow_checkbox = QCheckBox(); self.show_arrow_checkbox.setChecked(show_arrow)
+
+        self.general_tab = QWidget(); self.ui_tab = QWidget(); self.display_tab = QWidget()
+        self.tabs.addTab(self.general_tab, '')
+        self.tabs.addTab(self.ui_tab, '')
+        self.tabs.addTab(self.display_tab, '')
+
+        general_layout = QVBoxLayout(self.general_tab)
+        station_box = QGroupBox()
+        station_form = QFormLayout(station_box)
+        self.rows_label = QLabel(); self.cols_label = QLabel()
+        station_form.addRow(self.rows_label, self.rows_spin)
+        station_form.addRow(self.cols_label, self.cols_spin)
+        general_layout.addWidget(station_box)
+        general_layout.addStretch(1)
+        self.station_box = station_box
+
+        ui_layout = QVBoxLayout(self.ui_tab)
+        lang_box = QGroupBox()
+        lang_form = QFormLayout(lang_box)
+        self.language_label = QLabel()
+        lang_form.addRow(self.language_label, self.language_combo)
+        ui_layout.addWidget(lang_box)
+        ui_layout.addStretch(1)
+        self.lang_box = lang_box
+
+        display_layout = QVBoxLayout(self.display_tab)
+        display_box = QGroupBox()
+        display_form = QFormLayout(display_box)
+        display_form.addRow(self.show_aux_checkbox)
+        display_form.addRow(self.show_coord_checkbox)
+        display_form.addRow(self.show_index_checkbox)
+        display_form.addRow(self.show_arrow_checkbox)
+        display_layout.addWidget(display_box)
+        display_layout.addStretch(1)
+        self.display_box = display_box
+
+        bottom = QHBoxLayout()
+        bottom.addStretch(1)
+        self.apply_btn = QPushButton()
+        self.button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
-        self.form.addRow(self.button_box)
+        self.apply_btn.clicked.connect(self._emit_apply)
+        bottom.addWidget(self.apply_btn)
+        bottom.addWidget(self.button_box)
+        root.addLayout(bottom)
+
+        self._apply_callback = None
         self.retranslate(language)
+
+    def on_apply(self, callback) -> None:
+        self._apply_callback = callback
+
+    def _emit_apply(self) -> None:
+        if callable(self._apply_callback):
+            self._apply_callback(self)
 
     def retranslate(self, language: str) -> None:
         tr = I18N[language]
         self.setWindowTitle(tr['config_dialog_title'])
-        self.form.labelForField(self.rows_spin).setText(tr['rows']) if self.form.labelForField(self.rows_spin) else self.form.insertRow(0, tr['rows'], self.rows_spin)
-        self.form.labelForField(self.cols_spin).setText(tr['cols']) if self.form.labelForField(self.cols_spin) else None
-        self.form.labelForField(self.language_combo).setText(tr['language']) if self.form.labelForField(self.language_combo) else None
+        self.tabs.setTabText(0, tr['tab_general'])
+        self.tabs.setTabText(1, tr['tab_ui'])
+        self.tabs.setTabText(2, tr['tab_display'])
+        self.station_box.setTitle(tr['group_matrix'])
+        self.lang_box.setTitle(tr['group_language'])
+        self.display_box.setTitle(tr['group_display'])
+        self.rows_label.setText(tr['rows'])
+        self.cols_label.setText(tr['cols'])
+        self.language_label.setText(tr['language'])
         self.show_aux_checkbox.setText(tr['show_aux'])
         self.show_coord_checkbox.setText(tr['show_coord'])
-        self.button_box.button(QDialogButtonBox.StandardButton.Save).setText(tr['save'])
+        self.show_index_checkbox.setText(tr['show_index'])
+        self.show_arrow_checkbox.setText(tr['show_arrow'])
+        self.apply_btn.setText(tr['apply'])
+        self.button_box.button(QDialogButtonBox.StandardButton.Ok).setText(tr['save'])
         self.button_box.button(QDialogButtonBox.StandardButton.Cancel).setText(tr['cancel'])
 
 
@@ -187,33 +273,35 @@ class MatrixCanvas(QWidget):
         self.parcels: list[Parcel] = []
         self.show_coordinates = False
         self.show_auxiliary_info = True
-        self.setMinimumHeight(420)
+        self.show_index = True
+        self.show_arrow = True
+        self.setMinimumHeight(440)
 
     def set_matrix_shape(self, rows: int, cols: int) -> None:
         self.rows = max(1, rows)
         self.cols = max(1, cols)
         self.update()
 
-    def set_runtime_data(self, car_speeds: list[float], parcels: list[Parcel], show_coordinates: bool, show_auxiliary_info: bool) -> None:
+    def set_runtime_data(self, car_speeds: list[float], parcels: list[Parcel], show_coordinates: bool, show_auxiliary_info: bool, show_index: bool, show_arrow: bool) -> None:
         self.car_speeds = car_speeds
         self.parcels = parcels
         self.show_coordinates = show_coordinates
         self.show_auxiliary_info = show_auxiliary_info
+        self.show_index = show_index
+        self.show_arrow = show_arrow
         self.update()
 
     def _inner_rect(self) -> QRectF:
-        margin = 18
-        return QRectF(margin, margin, max(1, self.width() - margin * 2), max(1, self.height() - margin * 2))
+        margin = 28
+        return QRectF(margin, margin, max(1, self.width() - margin * 2), max(1, self.height() - margin * 2 - 26))
 
     def _cell_rect(self, row: int, col: int) -> QRectF:
-        margin = 18
+        rect = self._inner_rect()
         gap = 8
-        grid_w = self.width() - margin * 2
-        grid_h = self.height() - margin * 2
-        cell_w = (grid_w - gap * (self.cols - 1)) / self.cols
-        cell_h = (grid_h - gap * (self.rows - 1)) / self.rows
-        x = margin + col * (cell_w + gap)
-        y = margin + row * (cell_h + gap)
+        cell_w = (rect.width() - gap * (self.cols - 1)) / self.cols
+        cell_h = (rect.height() - gap * (self.rows - 1)) / self.rows
+        x = rect.left() + col * (cell_w + gap)
+        y = rect.top() + row * (cell_h + gap)
         return QRectF(x, y, cell_w, cell_h)
 
     def _speed_to_color(self, speed: float) -> QColor:
@@ -237,46 +325,92 @@ class MatrixCanvas(QWidget):
         min_y, max_y = min(ys), max(ys)
         span_x = max(max_x - min_x, 1.0)
         span_y = max(max_y - min_y, 1.0)
+        usable = self._inner_rect().adjusted(14, 14, -14, -14)
+        return [
+            QPointF(
+                usable.left() + ((float(x) - min_x) / span_x) * usable.width(),
+                usable.top() + ((float(y) - min_y) / span_y) * usable.height(),
+            )
+            for x, y in parcel.points
+        ]
+
+    def _active_cells(self) -> set[tuple[int, int]]:
+        active: set[tuple[int, int]] = set()
         rect = self._inner_rect()
-        pad = 16.0
-        usable = QRectF(rect.left() + pad, rect.top() + pad, max(1.0, rect.width() - pad * 2), max(1.0, rect.height() - pad * 2))
-        scaled: list[QPointF] = []
-        for x, y in parcel.points:
-            sx = usable.left() + ((float(x) - min_x) / span_x) * usable.width()
-            sy = usable.top() + ((float(y) - min_y) / span_y) * usable.height()
-            scaled.append(QPointF(sx, sy))
-        return scaled
+        for parcel in self.parcels:
+            pts = self._scaled_points(parcel)
+            if not pts:
+                continue
+            center_x = sum(p.x() for p in pts) / len(pts)
+            center_y = sum(p.y() for p in pts) / len(pts)
+            rel_x = max(0.0, min(0.999, (center_x - rect.left()) / max(rect.width(), 1.0)))
+            rel_y = max(0.0, min(0.999, (center_y - rect.top()) / max(rect.height(), 1.0)))
+            col = min(self.cols - 1, int(rel_x * self.cols))
+            row = min(self.rows - 1, int(rel_y * self.rows))
+            active.add((row, col))
+        return active
 
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillRect(self.rect(), QColor('#0A1726'))
+        painter.fillRect(self.rect(), QColor('#081421'))
+        painter.setPen(QPen(QColor('#183248'), 1))
+        painter.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 10, 10)
 
         total_cells = self.rows * self.cols
         padded = self.car_speeds + [0.0] * max(0, total_cells - len(self.car_speeds))
+        active_cells = self._active_cells()
+
         for idx in range(total_cells):
             row = idx // self.cols
             col = idx % self.cols
             rect = self._cell_rect(row, col)
-            speed = padded[idx] if idx < len(padded) else 0.0
+            speed = padded[idx]
             painter.setBrush(self._speed_to_color(speed))
-            painter.setPen(QPen(QColor('#1E5678'), 1))
+            pen_color = QColor('#46c7ff') if (row, col) in active_cells else QColor('#1E5678')
+            pen_width = 2 if (row, col) in active_cells else 1
+            painter.setPen(QPen(pen_color, pen_width))
             painter.drawRoundedRect(rect, 6, 6)
             painter.setPen(QColor('#E5F6FF'))
             painter.drawText(rect.adjusted(8, 6, -8, -6), Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft, f'{speed:.1f}')
+            if self.show_index:
+                painter.setPen(QColor('#8ccdf0'))
+                painter.drawText(rect.adjusted(8, 0, -8, -6), Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight, f'R{row+1}C{col+1}')
 
-        painter.setPen(QPen(QColor('#78E2FF'), 2))
+        if self.show_index:
+            painter.setPen(QColor('#7eb8d6'))
+            for col in range(self.cols):
+                rect = self._cell_rect(0, col)
+                painter.drawText(QRectF(rect.left(), 6, rect.width(), 18), Qt.AlignmentFlag.AlignCenter, str(col + 1))
+            for row in range(self.rows):
+                rect = self._cell_rect(row, 0)
+                painter.drawText(QRectF(4, rect.top(), 18, rect.height()), Qt.AlignmentFlag.AlignCenter, str(row + 1))
+
+        if self.show_arrow:
+            rect = self._inner_rect()
+            y = rect.bottom() + 16
+            painter.setPen(QPen(QColor('#00A3FF'), 3))
+            painter.drawLine(rect.left(), y, rect.right() - 24, y)
+            painter.drawLine(rect.right() - 24, y, rect.right() - 38, y - 8)
+            painter.drawLine(rect.right() - 24, y, rect.right() - 38, y + 8)
+            painter.setPen(QColor('#8ccdf0'))
+            painter.drawText(QRectF(rect.left(), y + 4, rect.width(), 18), Qt.AlignmentFlag.AlignCenter, 'FLOW')
+
         for parcel in self.parcels:
             points = self._scaled_points(parcel)
             if len(points) < 4:
                 continue
-            for i in range(len(points)):
-                painter.drawLine(points[i], points[(i + 1) % len(points)])
+            polygon = QPolygonF(points)
+            painter.setBrush(QColor(0, 163, 255, 60))
+            painter.setPen(QPen(QColor('#78E2FF'), 2))
+            painter.drawPolygon(polygon)
             if self.show_auxiliary_info:
                 center_x = sum(p.x() for p in points) / len(points)
                 center_y = sum(p.y() for p in points) / len(points)
+                painter.setPen(QColor('#ffffff'))
                 painter.drawText(QPointF(center_x, center_y), f'{parcel.speed:.1f}')
             if self.show_coordinates:
+                painter.setPen(QColor('#b8ecff'))
                 for raw, p in zip(parcel.points, points):
                     painter.drawText(p + QPointF(4, -4), f'({int(raw[0])},{int(raw[1])})')
 
@@ -288,6 +422,8 @@ class MainWindow(QMainWindow):
         self.logger = logging.getLogger(__name__)
         self.last_record: RealtimeRecord | None = None
         self.language = context.client_settings.ui.language
+        self.show_index = True
+        self.show_arrow = True
         self._apply_theme()
 
         root = QWidget()
@@ -329,7 +465,7 @@ class MainWindow(QMainWindow):
             QLabel[role="value"] { color: #f8fafc; font-size: 18px; font-weight: 700; }
             QLabel[role="status_ok"] { color: #00A3FF; font-weight: 700; }
             QLabel[role="status_off"] { color: #94a3b8; font-weight: 700; }
-            QLineEdit, QPlainTextEdit, QTableWidget, QSpinBox, QComboBox { background: #0a1726; border: 1px solid #1f3850; border-radius: 8px; padding: 6px; selection-background-color: #00A3FF; }
+            QLineEdit, QPlainTextEdit, QTableWidget, QSpinBox, QComboBox, QTabWidget::pane { background: #0a1726; border: 1px solid #1f3850; border-radius: 8px; padding: 6px; selection-background-color: #00A3FF; }
             QPushButton { background: #00A3FF; color: white; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; }
             QPushButton:hover { background: #13b0ff; }
             QPushButton[variant="secondary"] { background: #27455d; }
@@ -340,6 +476,8 @@ class MainWindow(QMainWindow):
             QHeaderView::section { background: #102235; color: #cbd5e1; border: none; padding: 8px; font-weight: 600; }
             QTableWidget { gridline-color: #173247; }
             QStatusBar { background: #111827; color: #cbd5e1; }
+            QTabBar::tab { background: #102235; color: #dbeafe; padding: 8px 16px; margin-right: 4px; border-top-left-radius: 6px; border-top-right-radius: 6px; }
+            QTabBar::tab:selected { background: #00A3FF; color: white; }
         """)
 
     def _build_top_navigation(self) -> QWidget:
@@ -420,7 +558,7 @@ class MainWindow(QMainWindow):
         self.rows_spin = QSpinBox(); self.rows_spin.setRange(1, 100)
         self.cols_spin = QSpinBox(); self.cols_spin.setRange(1, 100)
         self.language_combo = QComboBox(); self.language_combo.addItems(['中文', 'English'])
-        self.show_aux_checkbox = QCheckBox(); self.show_coord_checkbox = QCheckBox()
+        self.show_aux_checkbox = QCheckBox(); self.show_coord_checkbox = QCheckBox(); self.show_index_checkbox = QCheckBox(); self.show_arrow_checkbox = QCheckBox()
         self.rows_label = QLabel(); self.cols_label = QLabel(); self.lang_label = QLabel(); self.output_label = QLabel()
         form.addRow(self.output_label, self.output_dir_label)
         form.addRow(self.rows_label, self.rows_spin)
@@ -428,11 +566,15 @@ class MainWindow(QMainWindow):
         form.addRow(self.lang_label, self.language_combo)
         form.addRow(self.show_aux_checkbox)
         form.addRow(self.show_coord_checkbox)
+        form.addRow(self.show_index_checkbox)
+        form.addRow(self.show_arrow_checkbox)
         layout.addLayout(form)
         self.rows_spin.valueChanged.connect(self._matrix_shape_changed)
         self.cols_spin.valueChanged.connect(self._matrix_shape_changed)
         self.show_aux_checkbox.toggled.connect(self._matrix_option_changed)
         self.show_coord_checkbox.toggled.connect(self._matrix_option_changed)
+        self.show_index_checkbox.toggled.connect(self._matrix_option_changed)
+        self.show_arrow_checkbox.toggled.connect(self._matrix_option_changed)
         self.language_combo.currentIndexChanged.connect(self._language_combo_changed)
 
         buttons = QGridLayout()
@@ -465,7 +607,8 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(self.matrix_box)
         top = QHBoxLayout()
         self.realtime_status = QLabel(); self.realtime_status.setProperty('role', 'label')
-        top.addWidget(self.realtime_status); top.addStretch(1)
+        self.matrix_status = QLabel(); self.matrix_status.setProperty('role', 'status_ok')
+        top.addWidget(self.realtime_status); top.addStretch(1); top.addWidget(self.matrix_status)
         layout.addLayout(top)
         self.matrix_canvas = MatrixCanvas(10, 4)
         layout.addWidget(self.matrix_canvas, 1)
@@ -520,6 +663,7 @@ class MainWindow(QMainWindow):
         self.file_title.setText('File'); self.tcp_title.setText('TCP'); self.http_title.setText('HTTP'); self.unix_title.setText('Unix Socket'); self.zmq_title.setText('ZeroMQ')
         self.matrix_box.setTitle(self.trm('matrix'))
         self.realtime_status.setText(self.trm('waiting'))
+        self.matrix_status.setText(self.trm('matrix_status'))
         self.realtime_table.setHorizontalHeaderLabels([self.trm('realtime_table_ts'), self.trm('realtime_table_version'), self.trm('realtime_table_parcelnum'), self.trm('realtime_table_parcels')])
         self.metrics_box.setTitle(self.trm('metrics'))
         self.processed_card.title_label.setText(self.trm('processed'))
@@ -539,6 +683,8 @@ class MainWindow(QMainWindow):
         self.lang_label.setText(self.trm('language'))
         self.show_aux_checkbox.setText(self.trm('show_aux'))
         self.show_coord_checkbox.setText(self.trm('show_coord'))
+        self.show_index_checkbox.setText(self.trm('show_index'))
+        self.show_arrow_checkbox.setText(self.trm('show_arrow'))
         self.preview_btn.setText(self.trm('preview'))
         self.write_btn.setText(self.trm('write'))
         self.simulate_btn.setText(self.trm('inject'))
@@ -558,6 +704,8 @@ class MainWindow(QMainWindow):
         self.language_combo.setCurrentIndex(0 if client.ui.language == 'zh' else 1)
         self.show_aux_checkbox.setChecked(client.ui.show_auxiliary_info)
         self.show_coord_checkbox.setChecked(client.ui.show_coordinates)
+        self.show_index_checkbox.setChecked(self.show_index)
+        self.show_arrow_checkbox.setChecked(self.show_arrow)
         self.matrix_canvas.set_matrix_shape(client.ui.matrix_rows, client.ui.matrix_cols)
         self._set_channel_status(self.file_status, client.ingest.file.enabled)
         self._set_channel_status(self.tcp_status, client.ingest.tcp.enabled)
@@ -571,18 +719,24 @@ class MainWindow(QMainWindow):
         label.setProperty('role', 'status_ok' if enabled else 'status_off')
         label.style().unpolish(label); label.style().polish(label)
 
+    def _apply_dialog_values(self, dlg: SettingsDialog) -> None:
+        self.rows_spin.setValue(dlg.rows_spin.value())
+        self.cols_spin.setValue(dlg.cols_spin.value())
+        self.language = 'zh' if dlg.language_combo.currentIndex() == 0 else 'en'
+        self.language_combo.setCurrentIndex(dlg.language_combo.currentIndex())
+        self.show_aux_checkbox.setChecked(dlg.show_aux_checkbox.isChecked())
+        self.show_coord_checkbox.setChecked(dlg.show_coord_checkbox.isChecked())
+        self.show_index_checkbox.setChecked(dlg.show_index_checkbox.isChecked())
+        self.show_arrow_checkbox.setChecked(dlg.show_arrow_checkbox.isChecked())
+        self._apply_language()
+        self._matrix_shape_changed()
+        self._matrix_option_changed()
+
     def open_settings_dialog(self) -> None:
-        dlg = SettingsDialog(self, self.rows_spin.value(), self.cols_spin.value(), self.language, self.show_aux_checkbox.isChecked(), self.show_coord_checkbox.isChecked())
+        dlg = SettingsDialog(self, self.rows_spin.value(), self.cols_spin.value(), self.language, self.show_aux_checkbox.isChecked(), self.show_coord_checkbox.isChecked(), self.show_index_checkbox.isChecked(), self.show_arrow_checkbox.isChecked())
+        dlg.on_apply(self._apply_dialog_values)
         if dlg.exec():
-            self.rows_spin.setValue(dlg.rows_spin.value())
-            self.cols_spin.setValue(dlg.cols_spin.value())
-            self.language = 'zh' if dlg.language_combo.currentIndex() == 0 else 'en'
-            self.language_combo.setCurrentIndex(dlg.language_combo.currentIndex())
-            self.show_aux_checkbox.setChecked(dlg.show_aux_checkbox.isChecked())
-            self.show_coord_checkbox.setChecked(dlg.show_coord_checkbox.isChecked())
-            self._apply_language()
-            self._matrix_shape_changed()
-            self._matrix_option_changed()
+            self._apply_dialog_values(dlg)
             self.logs_editor.appendPlainText(f'Settings updated: {self.rows_spin.value()} x {self.cols_spin.value()}, lang={self.language}')
 
     def show_help(self) -> None:
@@ -597,8 +751,10 @@ class MainWindow(QMainWindow):
         self.logs_editor.appendPlainText(f'Matrix shape changed to {self.rows_spin.value()} x {self.cols_spin.value()}')
 
     def _matrix_option_changed(self) -> None:
+        self.show_index = self.show_index_checkbox.isChecked()
+        self.show_arrow = self.show_arrow_checkbox.isChecked()
         if self.last_record:
-            self.matrix_canvas.set_runtime_data(self.last_record.car_speeds, self.last_record.parcels, self.show_coord_checkbox.isChecked(), self.show_aux_checkbox.isChecked())
+            self.matrix_canvas.set_runtime_data(self.last_record.car_speeds, self.last_record.parcels, self.show_coord_checkbox.isChecked(), self.show_aux_checkbox.isChecked(), self.show_index, self.show_arrow)
 
     def _collect_overrides(self) -> dict[str, Any]:
         return {'matrix_rows': self.rows_spin.value(), 'matrix_cols': self.cols_spin.value(), 'language': self.language}
@@ -625,9 +781,12 @@ class MainWindow(QMainWindow):
         sample = {
             'version': '1.0.0',
             'efficiency': '0',
-            'parcelNum': '1',
-            'car_speeds': [0.5] * (self.rows_spin.value() * self.cols_spin.value()),
-            'parcels': [{'speed': 2, 'points': [[20, 30], [160, 70], [180, 162], [90, 183]]}],
+            'parcelNum': '2',
+            'car_speeds': [0.2 + (i % self.cols_spin.value()) * 0.25 for i in range(self.rows_spin.value() * self.cols_spin.value())],
+            'parcels': [
+                {'speed': 2.0, 'points': [[20, 30], [160, 70], [180, 162], [90, 183]]},
+                {'speed': 1.2, 'points': [[180, 120], [300, 135], [320, 220], [210, 232]]},
+            ],
         }
         self.context.channel_manager.inject_sample(json.dumps(sample))
         self.logs_editor.appendPlainText('Injected sample single-piece realtime payload')
@@ -641,7 +800,7 @@ class MainWindow(QMainWindow):
         self.kpi_processed_card.value_label.setText(str(record.parcel_num))
         self.success_card.value_label.setText(record.version)
         self.exception_card.value_label.setText(str(len(record.parcels)))
-        self.matrix_canvas.set_runtime_data(record.car_speeds, record.parcels, self.show_coord_checkbox.isChecked(), self.show_aux_checkbox.isChecked())
+        self.matrix_canvas.set_runtime_data(record.car_speeds, record.parcels, self.show_coord_checkbox.isChecked(), self.show_aux_checkbox.isChecked(), self.show_index, self.show_arrow)
         row = self.realtime_table.rowCount(); self.realtime_table.insertRow(row)
         values = [record.timestamp.isoformat(timespec='seconds'), record.version, str(record.parcel_num), str(len(record.parcels))]
         for col, text in enumerate(values):
@@ -649,6 +808,7 @@ class MainWindow(QMainWindow):
         while self.realtime_table.rowCount() > 50:
             self.realtime_table.removeRow(0)
         self.realtime_status.setText(f"{self.trm('waiting').split(' / ')[0] if ' / ' in self.trm('waiting') else self.trm('waiting')}: {record.timestamp.isoformat(timespec='seconds')} | parcels={record.parcel_num}")
+        self.matrix_status.setText(f"{self.trm('matrix_status').split(' / ')[0] if ' / ' in self.trm('matrix_status') else self.trm('matrix_status')}: {self.rows_spin.value()} x {self.cols_spin.value()}")
         self._update_metrics(metrics)
         self.logs_editor.appendPlainText(f'Received runtime payload version={record.version} parcelNum={record.parcel_num}')
 
