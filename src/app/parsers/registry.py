@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Callable
 
 from app.domain.models.raw_message import RawMessage
 from app.domain.models.realtime_record import RealtimeRecord
 
 ParserFunc = Callable[[RawMessage], list[RealtimeRecord]]
+logger = logging.getLogger(__name__)
 
 
 def parse_json_default(message: RawMessage) -> list[RealtimeRecord]:
@@ -41,6 +43,8 @@ def parse_jsonl_default(message: RawMessage) -> list[RealtimeRecord]:
 
 
 class ParserRegistry:
+    """Resolve a parser function by parser_type."""
+
     def __init__(self) -> None:
         self._parsers: dict[str, ParserFunc] = {
             'json_default': parse_json_default,
@@ -53,8 +57,13 @@ class ParserRegistry:
 
     def register(self, parser_type: str, parser: ParserFunc) -> None:
         self._parsers[parser_type] = parser
+        logger.info('Registered parser type: %s', parser_type)
 
     def parse(self, message: RawMessage) -> list[RealtimeRecord]:
         if message.parser_type not in self._parsers:
+            logger.error('Unknown parser type: %s', message.parser_type)
             raise KeyError(f'Unknown parser type: {message.parser_type}')
-        return self._parsers[message.parser_type](message)
+        logger.debug('Parsing message with parser type: %s', message.parser_type)
+        records = self._parsers[message.parser_type](message)
+        logger.debug('Parsed %d records using parser type: %s', len(records), message.parser_type)
+        return records

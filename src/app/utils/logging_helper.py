@@ -10,10 +10,11 @@ def configure_logging() -> None:
     root = logging.getLogger()
     if root.handlers:
         return
-    root.setLevel(logging.INFO)
+    root.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s %(levelname)s %(name)s - %(message)s')
 
     console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
     console.setFormatter(formatter)
 
     file_handler = RotatingFileHandler(
@@ -22,7 +23,9 @@ def configure_logging() -> None:
         backupCount=3,
         encoding='utf-8',
     )
+    file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(formatter)
 
     root.addHandler(console)
     root.addHandler(file_handler)
+    logging.getLogger(__name__).info('Logging configured. file_dir=%s', app_log_dir())
