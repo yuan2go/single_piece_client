@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Single Piece Client
+Comment=Single piece separation desktop edge client
+Exec=/opt/single-piece-client/single-piece-client
+Icon=single-piece-client
+Terminal=false
+Categories=Utility;
