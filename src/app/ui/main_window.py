@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
+from typing import Any
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
@@ -33,7 +33,7 @@ class MainWindow(QMainWindow):
         self.context = context
         self.logger = logging.getLogger(__name__)
         self.setWindowTitle('Single Piece Client')
-        self.resize(1100, 720)
+        self.resize(1120, 760)
 
         self.tabs = QTabWidget()
         self.config_widget = self._build_config_widget()
@@ -47,42 +47,48 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.metrics_widget, 'Metrics')
         self.tabs.addTab(self.logs_widget, 'Logs')
         self.setCentralWidget(self.tabs)
-        self.statusBar().showMessage('Ready')
 
-        self.context.realtime_ingest_service.on_records(self._handle_records)
+        self.context.ingest_pipeline_service.on_records(self._handle_records)
         self.system_timer = QTimer(self)
-        self.system_timer.setInterval(1000)
+        self.system_timer.setInterval(self.context.client_settings.monitor.sample_interval_ms)
         self.system_timer.timeout.connect(self._refresh_system)
         self.system_timer.start()
-        self._load_default_profile_values()
+        self._load_context_values()
+        self.context.start()
+        self.statusBar().showMessage('Channels started')
 
     def _build_config_widget(self) -> QWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
         box = QGroupBox('Algorithm Config')
         form = QFormLayout(box)
-        self.site_id_edit = QLineEdit()
-        self.device_id_edit = QLineEdit()
-        self.target_dir_edit = QLineEdit()
-        self.realtime_dir_edit = QLineEdit()
+        self.site_id_label = QLabel()
+        self.device_id_label = QLabel()
+        self.algorithm_name_label = QLabel()
+        self.channels_label = QLabel()
+        self.output_dir_label = QLabel()
         self.speed_edit = QLineEdit('1.0')
         self.threshold_edit = QLineEdit('0.85')
         self.config_preview = QPlainTextEdit()
         self.config_preview.setReadOnly(True)
         self.config_status = QLabel('Ready')
-        form.addRow('Site ID', self.site_id_edit)
-        form.addRow('Device ID', self.device_id_edit)
-        form.addRow('Config Output Dir', self.target_dir_edit)
-        form.addRow('Realtime Input Dir', self.realtime_dir_edit)
+        form.addRow('Site ID', self.site_id_label)
+        form.addRow('Device ID', self.device_id_label)
+        form.addRow('Algorithm', self.algorithm_name_label)
+        form.addRow('Enabled Channels', self.channels_label)
+        form.addRow('Config Output Dir', self.output_dir_label)
         form.addRow('Speed', self.speed_edit)
         form.addRow('Threshold', self.threshold_edit)
         layout.addWidget(box)
-        preview_btn = QPushButton('Preview')
-        write_btn = QPushButton('Write Config')
+        preview_btn = QPushButton('Preview Algorithm Config')
+        write_btn = QPushButton('Write Algorithm Config')
+        simulate_btn = QPushButton('Inject Sample Event')
         preview_btn.clicked.connect(self.preview_config)
         write_btn.clicked.connect(self.write_config)
+        simulate_btn.clicked.connect(self.inject_sample_event)
         layout.addWidget(preview_btn)
         layout.addWidget(write_btn)
+        layout.addWidget(simulate_btn)
         layout.addWidget(self.config_preview)
         layout.addWidget(self.config_status)
         return widget
@@ -133,38 +139,37 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.logs_editor)
         return widget
 
-    def _load_default_profile_values(self) -> None:
-        if not self.context.profile_service.profiles:
-            return
-        site = self.context.profile_service.profiles[0]
-        device = site.devices[0]
-        self.site_id_edit.setText(site.site_id)
-        self.device_id_edit.setText(device.device_id)
-        self.target_dir_edit.setText(str(device.config_output_dir))
-        self.realtime_dir_edit.setText(str(device.realtime_input_dir))
-        try:
-            self.context.realtime_ingest_service.start_watch(device.realtime_input_dir)
-            self.logs_editor.appendPlainText(f'Watching realtime dir: {device.realtime_input_dir}')
-        except Exception as exc:
-            self.logs_editor.appendPlainText(f'Watch start failed: {exc}')
-
-    def _build_runtime_config(self):
-        params = {
-            'speed': float(self.speed_edit.text() or 0),
-            'threshold': float(self.threshold_edit.text() or 0),
-        }
-        return self.context.config_service.build_runtime_config(
-            site_id=self.site_id_edit.text().strip(),
-            device_id=self.device_id_edit.text().strip(),
-            target_directory=Path(self.target_dir_edit.text().strip()),
-            realtime_directory=Path(self.realtime_dir_edit.text().strip()),
-            parameters=params,
+    def _load_context_values(self) -> None:
+        client = self.context.client_settings
+        algo = self.context.algorithm_settings
+        self.site_id_label.setText(client.site_id)
+        self.device_id_label.setText(client.device_id)
+        self.algorithm_name_label.setText(algo.algorithm_name)
+        self.channels_label.setText(', '.join(client.ingest.enabled_channels) or '-')
+        self.output_dir_label.setText(str(algo.config_output_dir))
+        if hasattr(algo, 'speed'):
+            self.speed_edit.setText(str(getattr(algo, 'speed')))
+        if hasattr(algo, 'threshold'):
+            self.threshold_edit.setText(str(getattr(algo, 'threshold')))
+        self.logs_editor.appendPlainText(
+            'Enabled channels: ' + ', '.join(self.context.channel_manager.enabled_channel_names())
         )
+
+    def _collect_overrides(self) -> dict[str, Any]:
+        overrides: dict[str, Any] = {}
+        if self.speed_edit.text().strip():
+            overrides['speed'] = float(self.speed_edit.text())
+        if self.threshold_edit.text().strip():
+            overrides['threshold'] = float(self.threshold_edit.text())
+        return overrides
 
     def preview_config(self) -> None:
         try:
-            runtime_config = self._build_runtime_config()
-            payload = self.context.config_service.diff_preview(runtime_config)
+            payload = self.context.algorithm_config_service.build_payload(
+                self.context.client_settings,
+                self.context.algorithm_settings,
+                self._collect_overrides(),
+            )
             self.config_preview.setPlainText(json.dumps(payload, indent=2, ensure_ascii=False))
             self.config_status.setText('Preview generated')
         except Exception as exc:
@@ -172,14 +177,22 @@ class MainWindow(QMainWindow):
 
     def write_config(self) -> None:
         try:
-            runtime_config = self._build_runtime_config()
-            path = self.context.config_service.write(runtime_config)
+            path = self.context.algorithm_config_service.write(
+                self.context.client_settings,
+                self.context.algorithm_settings,
+                self._collect_overrides(),
+            )
             self.preview_config()
-            self.config_status.setText(f'Config written: {path}')
+            self.config_status.setText(f'Algorithm config written: {path}')
+            self.logs_editor.appendPlainText(f'Wrote algorithm config: {path}')
         except Exception as exc:
             QMessageBox.critical(self, 'Write failed', str(exc))
 
-    def _handle_records(self, records: list[RealtimeRecord]) -> None:
+    def inject_sample_event(self) -> None:
+        self.context.inject_sample_event()
+        self.logs_editor.appendPlainText('Injected sample event through first available channel')
+
+    def _handle_records(self, records: list[RealtimeRecord], metrics: ThroughputMetrics) -> None:
         for record in records[-20:]:
             row = self.realtime_table.rowCount()
             self.realtime_table.insertRow(row)
@@ -192,7 +205,6 @@ class MainWindow(QMainWindow):
             self.realtime_status.setText(f'Last update: {records[-1].timestamp.isoformat(timespec="seconds")}')
         while self.realtime_table.rowCount() > 200:
             self.realtime_table.removeRow(0)
-        metrics = self.context.metrics_service.push_records(records)
         self._update_metrics(metrics)
         self.logs_editor.appendPlainText(f'Received {len(records)} realtime records')
 
@@ -214,5 +226,5 @@ class MainWindow(QMainWindow):
         self.efficiency_label.setText(f'{metrics.efficiency_rate:.2%}')
 
     def closeEvent(self, event) -> None:  # noqa: N802
-        self.context.realtime_ingest_service.stop_watch()
+        self.context.stop()
         event.accept()

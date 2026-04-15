@@ -1,0 +1,14 @@
+{
+  "algorithm_type": "default",
+  "algorithm_name": "default_algorithm",
+  "parser_type": "jsonl_default",
+  "render_format": "json",
+  "config_output_dir": "./runtime/hz_demo/spc_01/config",
+  "result_schema": "default",
+  "threshold": 0.85,
+  "speed": 1.0,
+  "extra": {
+    "line": "A1",
+    "station_mode": "demo"
+  }
+}

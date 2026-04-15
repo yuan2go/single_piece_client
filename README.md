@@ -2,21 +2,14 @@
 
 A PyQt6 desktop edge client for single-piece separation stations.
 
-## Features
+## Current architecture
 
-- Fill in station and algorithm settings, then render and write config files to a target directory
-- Watch algorithm output files and show real-time records in the desktop client
-- Monitor CPU, memory, disk, and key process-level OS health
-- Compute throughput and efficiency metrics from event streams
-- Support multi-site and multi-device profiles through profile-driven configuration
-
-## Architecture
-
-- `ui/`: desktop pages and dialogs
-- `services/`: business workflows
-- `adapters/`: filesystem watch, parsers, and OS integration
-- `domain/`: typed models
-- `profiles/`: site and device specific templates
+- Stable **client settings** for app/runtime/ingest/monitor behavior
+- Variable **algorithm settings** for algorithm-specific fields and render rules
+- Multi-channel ingest skeleton: file / tcp / http / unix socket / zeromq
+- Parser registry that turns raw messages into unified realtime records
+- Metrics service for throughput and efficiency
+- Desktop UI for config preview/write, realtime data, system monitoring, and metrics
 
 ## Quick start on macOS
 
@@ -49,5 +42,5 @@ bash scripts/package_deb.sh
 ## Deploy `.deb`
 
 ```bash
-sudo dpkg -i dist-deb/single-piece-client_0.1.0_amd64.deb
+sudo dpkg -i dist-deb/single-piece-client_0.2.0_amd64.deb
 ```

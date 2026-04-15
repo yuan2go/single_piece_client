@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 APP_NAME="single-piece-client"
-VERSION="0.1.0"
+VERSION="0.2.0"
 ARCH="amd64"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist/$APP_NAME"
@@ -20,5 +20,4 @@ Architecture: $ARCH
 Maintainer: yuan2go
 Description: Single piece separation desktop edge client
 EOF
-chmod 755 "$PKG_DIR/DEBIAN"
 dpkg-deb --build "$PKG_DIR"

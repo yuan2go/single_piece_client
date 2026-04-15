@@ -1,0 +1,36 @@
+{
+  "app_name": "single-piece-client",
+  "site_id": "hz_demo",
+  "device_id": "spc_01",
+  "selected_algorithm": "default_algorithm",
+  "ui_refresh_ms": 1000,
+  "log_level": "INFO",
+  "ingest": {
+    "enabled_channels": ["file", "tcp"],
+    "file": {
+      "enabled": true,
+      "watch_mode": "directory",
+      "path": "./runtime/hz_demo/spc_01/realtime",
+      "file_pattern": "*.jsonl",
+      "recursive": false,
+      "parser_type": "jsonl_default"
+    },
+    "tcp": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 9101,
+      "message_mode": "line",
+      "parser_type": "tcp_json_default"
+    },
+    "http": {"enabled": false},
+    "unix_socket": {"enabled": false},
+    "zeromq": {"enabled": false}
+  },
+  "monitor": {
+    "enabled": true,
+    "sample_interval_ms": 1000,
+    "monitor_cpu": true,
+    "monitor_memory": true,
+    "monitor_disk": true
+  }
+}

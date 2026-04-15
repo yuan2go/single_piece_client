@@ -20,7 +20,10 @@ class FileIngestChannel:
     def start(self) -> None:
         self._started = True
         path = Path(self.config.path)
-        path.parent.mkdir(parents=True, exist_ok=True) if self.config.watch_mode == 'single_file' else path.mkdir(parents=True, exist_ok=True)
+        if self.config.watch_mode == 'single_file':
+            path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            path.mkdir(parents=True, exist_ok=True)
 
     def stop(self) -> None:
         self._started = False

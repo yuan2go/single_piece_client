@@ -6,7 +6,6 @@ from collections.abc import Callable
 from app.domain.models.raw_message import RawMessage
 from app.domain.models.realtime_record import RealtimeRecord
 
-
 ParserFunc = Callable[[RawMessage], list[RealtimeRecord]]
 
 
