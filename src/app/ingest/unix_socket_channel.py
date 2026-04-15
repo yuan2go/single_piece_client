@@ -15,6 +15,8 @@ class _ThreadingUnixStreamServer(socketserver.ThreadingMixIn, socketserver.UnixS
 
 
 class UnixSocketIngestChannel:
+    """Unix domain socket channel for local process push data on Ubuntu/Linux."""
+
     def __init__(self, config: UnixSocketChannelConfig, algorithm_type: str) -> None:
         self.config = config
         self.algorithm_type = algorithm_type
@@ -31,11 +33,13 @@ class UnixSocketIngestChannel:
             os.unlink(self.config.path)
         callback = self._callback
         channel = self
+        self._logger.info('Starting Unix socket channel at %s', self.config.path)
 
         class Handler(socketserver.StreamRequestHandler):
             def handle(self) -> None:
                 payload = self.rfile.read().decode('utf-8', errors='ignore').strip()
                 if payload and callback:
+                    channel._logger.debug('Unix socket payload received length=%d', len(payload))
                     callback(
                         RawMessage(
                             source_type='unix_socket',
@@ -53,6 +57,7 @@ class UnixSocketIngestChannel:
 
     def stop(self) -> None:
         if self._server:
+            self._logger.info('Stopping Unix socket channel at %s', self.config.path)
             self._server.shutdown()
             self._server.server_close()
             self._server = None
@@ -62,6 +67,7 @@ class UnixSocketIngestChannel:
 
     def ingest_text(self, payload: str) -> None:
         if not self._callback:
+            self._logger.warning('Unix socket ingest_text called before callback binding')
             return
         self._callback(
             RawMessage(

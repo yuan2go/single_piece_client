@@ -12,6 +12,12 @@ from app.ingest.base import RawMessageCallback
 
 
 class ZeroMqIngestChannel:
+    """ZeroMQ receiver channel.
+
+    One receiver thread owns one socket. This makes troubleshooting easier and also
+    follows the recommended threading model for PyZMQ sockets.
+    """
+
     def __init__(self, config: ZeroMqChannelConfig, algorithm_type: str) -> None:
         self.config = config
         self.algorithm_type = algorithm_type
@@ -26,6 +32,7 @@ class ZeroMqIngestChannel:
         self._callback = callback
 
     def start(self) -> None:
+        self._logger.info('Starting ZeroMQ channel on %s mode=%s topic=%s', self.config.endpoint, self.config.mode, self.config.topic)
         self._running = True
         self._thread = threading.Thread(target=self._run, name='zmq-ingest', daemon=True)
         self._thread.start()
@@ -43,6 +50,7 @@ class ZeroMqIngestChannel:
             events = dict(poller.poll(200))
             if sock in events and events[sock] == zmq.POLLIN:
                 payload = sock.recv_string()
+                self._logger.debug('ZeroMQ payload received length=%d', len(payload))
                 if self._callback:
                     self._callback(
                         RawMessage(
@@ -60,6 +68,7 @@ class ZeroMqIngestChannel:
         self._socket = None
 
     def stop(self) -> None:
+        self._logger.info('Stopping ZeroMQ channel on %s', self.config.endpoint)
         self._running = False
         if self._thread:
             self._thread.join(timeout=2)
@@ -67,6 +76,7 @@ class ZeroMqIngestChannel:
 
     def ingest_text(self, payload: str) -> None:
         if not self._callback:
+            self._logger.warning('ZeroMQ ingest_text called before callback binding')
             return
         self._callback(
             RawMessage(

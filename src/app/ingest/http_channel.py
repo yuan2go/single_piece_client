@@ -10,6 +10,8 @@ from app.ingest.base import RawMessageCallback
 
 
 class HttpIngestChannel:
+    """Local HTTP channel for localhost POST push data."""
+
     def __init__(self, config: HttpChannelConfig, algorithm_type: str) -> None:
         self.config = config
         self.algorithm_type = algorithm_type
@@ -24,6 +26,7 @@ class HttpIngestChannel:
     def start(self) -> None:
         callback = self._callback
         channel = self
+        self._logger.info('Starting HTTP channel on http://%s:%s%s', self.config.host, self.config.port, self.config.endpoint)
 
         class Handler(BaseHTTPRequestHandler):
             def do_POST(self) -> None:  # noqa: N802
@@ -34,6 +37,7 @@ class HttpIngestChannel:
                 length = int(self.headers.get('Content-Length', '0'))
                 payload = self.rfile.read(length).decode('utf-8', errors='ignore')
                 if payload and callback:
+                    channel._logger.debug('HTTP payload received length=%d', len(payload))
                     callback(
                         RawMessage(
                             source_type='http',
@@ -56,6 +60,7 @@ class HttpIngestChannel:
 
     def stop(self) -> None:
         if self._server:
+            self._logger.info('Stopping HTTP channel on %s:%s', self.config.host, self.config.port)
             self._server.shutdown()
             self._server.server_close()
             self._server = None
@@ -63,6 +68,7 @@ class HttpIngestChannel:
 
     def ingest_text(self, payload: str) -> None:
         if not self._callback:
+            self._logger.warning('HTTP ingest_text called before callback binding')
             return
         self._callback(
             RawMessage(

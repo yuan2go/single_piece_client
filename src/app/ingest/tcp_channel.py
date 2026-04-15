@@ -15,6 +15,8 @@ class _ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 
 class TcpIngestChannel:
+    """Local TCP server channel for algorithm push data."""
+
     def __init__(self, config: TcpChannelConfig, algorithm_type: str) -> None:
         self.config = config
         self.algorithm_type = algorithm_type
@@ -29,6 +31,7 @@ class TcpIngestChannel:
     def start(self) -> None:
         callback = self._callback
         channel = self
+        self._logger.info('Starting TCP channel on %s:%s mode=%s', self.config.host, self.config.port, self.config.message_mode)
 
         class Handler(socketserver.BaseRequestHandler):
             def handle(self) -> None:
@@ -42,6 +45,7 @@ class TcpIngestChannel:
                         break
                 payload = ''.join(chunks).strip()
                 if payload and callback:
+                    channel._logger.debug('TCP payload received length=%d', len(payload))
                     callback(
                         RawMessage(
                             source_type='tcp',
@@ -59,6 +63,7 @@ class TcpIngestChannel:
 
     def stop(self) -> None:
         if self._server:
+            self._logger.info('Stopping TCP channel on %s:%s', self.config.host, self.config.port)
             self._server.shutdown()
             self._server.server_close()
             self._server = None
@@ -66,6 +71,7 @@ class TcpIngestChannel:
 
     def ingest_text(self, payload: str) -> None:
         if not self._callback:
+            self._logger.warning('TCP ingest_text called before callback binding')
             return
         self._callback(
             RawMessage(

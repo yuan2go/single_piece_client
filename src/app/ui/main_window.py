@@ -4,8 +4,8 @@ import json
 import logging
 from typing import Any
 
-from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QColor
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QFormLayout,
     QFrame,
@@ -31,6 +31,15 @@ from app.domain.models.throughput_metrics import ThroughputMetrics
 
 
 class MainWindow(QMainWindow):
+    """Main operator-facing window.
+
+    Layout principle:
+    - top: station overview / KPI strip
+    - left: config operations and channel status
+    - center: realtime production data and KPI cards
+    - right: system health and logs / alerts
+    """
+
     def __init__(self, context: AppContext) -> None:
         super().__init__()
         self.context = context
@@ -62,6 +71,7 @@ class MainWindow(QMainWindow):
 
         self._load_context_values()
         self.context.start()
+        self.logger.info('Main window initialized and client started')
         self.statusBar().showMessage('Client started')
 
     def _apply_theme(self) -> None:
@@ -72,9 +82,7 @@ class MainWindow(QMainWindow):
                 color: #e5e7eb;
                 font-size: 13px;
             }
-            QMainWindow {
-                background: #0b1220;
-            }
+            QMainWindow { background: #0b1220; }
             QGroupBox {
                 border: 1px solid #243041;
                 border-radius: 10px;
@@ -89,31 +97,12 @@ class MainWindow(QMainWindow):
                 padding: 0 6px 0 6px;
                 color: #93c5fd;
             }
-            QLabel[role="label"] {
-                color: #94a3b8;
-                font-size: 12px;
-            }
-            QLabel[role="value"] {
-                color: #f8fafc;
-                font-size: 18px;
-                font-weight: 700;
-            }
-            QLabel[role="status_ok"] {
-                color: #34d399;
-                font-weight: 700;
-            }
-            QLabel[role="status_off"] {
-                color: #94a3b8;
-                font-weight: 700;
-            }
-            QLabel[role="status_warn"] {
-                color: #fbbf24;
-                font-weight: 700;
-            }
-            QLabel[role="status_err"] {
-                color: #f87171;
-                font-weight: 700;
-            }
+            QLabel[role="label"] { color: #94a3b8; font-size: 12px; }
+            QLabel[role="value"] { color: #f8fafc; font-size: 18px; font-weight: 700; }
+            QLabel[role="status_ok"] { color: #34d399; font-weight: 700; }
+            QLabel[role="status_off"] { color: #94a3b8; font-weight: 700; }
+            QLabel[role="status_warn"] { color: #fbbf24; font-weight: 700; }
+            QLabel[role="status_err"] { color: #f87171; font-weight: 700; }
             QLineEdit, QPlainTextEdit, QTableWidget {
                 background: #0b1220;
                 border: 1px solid #263244;
@@ -129,15 +118,9 @@ class MainWindow(QMainWindow):
                 padding: 8px 12px;
                 font-weight: 600;
             }
-            QPushButton:hover {
-                background: #2563eb;
-            }
-            QPushButton[variant="secondary"] {
-                background: #334155;
-            }
-            QPushButton[variant="warn"] {
-                background: #b45309;
-            }
+            QPushButton:hover { background: #2563eb; }
+            QPushButton[variant="secondary"] { background: #334155; }
+            QPushButton[variant="warn"] { background: #b45309; }
             QHeaderView::section {
                 background: #172033;
                 color: #cbd5e1;
@@ -145,13 +128,8 @@ class MainWindow(QMainWindow):
                 padding: 8px;
                 font-weight: 600;
             }
-            QTableWidget {
-                gridline-color: #1f2937;
-            }
-            QStatusBar {
-                background: #111827;
-                color: #cbd5e1;
-            }
+            QTableWidget { gridline-color: #1f2937; }
+            QStatusBar { background: #111827; color: #cbd5e1; }
             """
         )
 
@@ -359,6 +337,7 @@ class MainWindow(QMainWindow):
         self.logs_editor.appendPlainText(
             'Enabled channels: ' + ', '.join(self.context.channel_manager.enabled_channel_names())
         )
+        self.logger.info('UI loaded context values for site=%s device=%s', client.site_id, client.device_id)
 
     def _set_channel_status(self, label: QLabel, enabled: bool) -> None:
         label.setText('ONLINE' if enabled else 'OFF')
@@ -383,7 +362,9 @@ class MainWindow(QMainWindow):
             )
             self.config_preview.setPlainText(json.dumps(payload, indent=2, ensure_ascii=False))
             self.config_status.setText('Preview generated')
+            self.logger.info('Previewed algorithm config')
         except Exception as exc:
+            self.logger.exception('Preview config failed')
             QMessageBox.critical(self, 'Preview failed', str(exc))
 
     def write_config(self) -> None:
@@ -396,12 +377,15 @@ class MainWindow(QMainWindow):
             self.preview_config()
             self.config_status.setText(f'Algorithm config written: {path}')
             self.logs_editor.appendPlainText(f'Wrote algorithm config: {path}')
+            self.logger.info('Wrote algorithm config through UI: %s', path)
         except Exception as exc:
+            self.logger.exception('Write config failed')
             QMessageBox.critical(self, 'Write failed', str(exc))
 
     def inject_sample_event(self) -> None:
         self.context.inject_sample_event()
         self.logs_editor.appendPlainText('Injected sample event through first available channel')
+        self.logger.info('Injected sample event from UI')
 
     def _handle_records(self, records: list[RealtimeRecord], metrics: ThroughputMetrics) -> None:
         for record in records[-20:]:
@@ -426,6 +410,7 @@ class MainWindow(QMainWindow):
             self.realtime_table.removeRow(0)
         self._update_metrics(metrics)
         self.logs_editor.appendPlainText(f'Received {len(records)} realtime records')
+        self.logger.info('UI received %d records', len(records))
 
     def _color_result_item(self, item: QTableWidgetItem, result: str) -> None:
         val = result.lower()
@@ -457,5 +442,6 @@ class MainWindow(QMainWindow):
         self.kpi_efficiency_card.value_label.setText(f'{metrics.efficiency_rate:.2%}')
 
     def closeEvent(self, event) -> None:  # noqa: N802
+        self.logger.info('Closing main window and stopping app context')
         self.context.stop()
         event.accept()

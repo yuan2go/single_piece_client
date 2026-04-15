@@ -24,6 +24,8 @@ class _FileEventHandler(FileSystemEventHandler):
 
 
 class FileIngestChannel:
+    """Watch a file or directory and emit incremental text chunks as RawMessage."""
+
     def __init__(self, config: FileChannelConfig, algorithm_type: str) -> None:
         self.config = config
         self.algorithm_type = algorithm_type
@@ -37,6 +39,7 @@ class FileIngestChannel:
 
     def start(self) -> None:
         base_path = Path(self.config.path)
+        self._logger.info('Starting file channel: mode=%s path=%s pattern=%s', self.config.watch_mode, base_path, self.config.file_pattern)
         if self.config.watch_mode == 'single_file':
             base_path.parent.mkdir(parents=True, exist_ok=True)
             if base_path.exists():
@@ -54,9 +57,11 @@ class FileIngestChannel:
         observer.schedule(_FileEventHandler(self), str(watch_target), recursive=self.config.recursive)
         observer.start()
         self._observer = observer
+        self._logger.info('File observer started on %s', watch_target)
 
     def stop(self) -> None:
         if self._observer:
+            self._logger.info('Stopping file observer')
             self._observer.stop()
             self._observer.join(timeout=2)
             self._observer = None
@@ -76,12 +81,14 @@ class FileIngestChannel:
                 payload = fh.read()
                 self._offsets[path] = fh.tell()
             if payload.strip():
+                self._logger.debug('Read %d chars from file %s', len(payload), path)
                 self.ingest_text(payload, source_name=str(path))
         except Exception:
             self._logger.exception('Failed to ingest file path %s', path)
 
     def ingest_text(self, payload: str, source_name: str | None = None) -> None:
         if not self._callback:
+            self._logger.warning('File channel received text before callback binding')
             return
         self._callback(
             RawMessage(
