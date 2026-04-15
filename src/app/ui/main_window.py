@@ -4,8 +4,8 @@ import json
 import logging
 from typing import Any
 
-from PyQt6.QtGui import QColor
 from PyQt6.QtCore import QTimer
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QFormLayout,
     QFrame,
@@ -33,19 +33,19 @@ from app.domain.models.throughput_metrics import ThroughputMetrics
 class MainWindow(QMainWindow):
     """Main operator-facing window.
 
-    Layout principle:
-    - top: station overview / KPI strip
-    - left: config operations and channel status
-    - center: realtime production data and KPI cards
-    - right: system health and logs / alerts
+    Updated UI goals:
+    - main theme color uses #00A3FF
+    - top navigation provides Settings / Query / Help entry points
+    - logs panel is moved below the Query button area
+    - center area remains the primary realtime and KPI workspace
     """
 
     def __init__(self, context: AppContext) -> None:
         super().__init__()
         self.context = context
         self.logger = logging.getLogger(__name__)
-        self.setWindowTitle('Single Piece Client')
-        self.resize(1440, 920)
+        self.setWindowTitle('单件分离客户端 / Single Piece Client')
+        self.resize(1460, 940)
         self.setMinimumSize(1280, 820)
         self._apply_theme()
 
@@ -53,6 +53,7 @@ class MainWindow(QMainWindow):
         root_layout = QVBoxLayout(root)
         root_layout.setContentsMargins(12, 12, 12, 12)
         root_layout.setSpacing(12)
+        root_layout.addWidget(self._build_top_navigation())
         root_layout.addWidget(self._build_header_bar())
 
         body = QHBoxLayout()
@@ -78,13 +79,13 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(
             """
             QWidget {
-                background: #0f172a;
+                background: #0b1220;
                 color: #e5e7eb;
                 font-size: 13px;
             }
-            QMainWindow { background: #0b1220; }
+            QMainWindow { background: #08101d; }
             QGroupBox {
-                border: 1px solid #243041;
+                border: 1px solid #1d3448;
                 border-radius: 10px;
                 margin-top: 10px;
                 padding-top: 12px;
@@ -95,43 +96,76 @@ class MainWindow(QMainWindow):
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 6px 0 6px;
-                color: #93c5fd;
+                color: #00A3FF;
             }
-            QLabel[role="label"] { color: #94a3b8; font-size: 12px; }
+            QLabel[role="label"] { color: #8ca4b8; font-size: 12px; }
             QLabel[role="value"] { color: #f8fafc; font-size: 18px; font-weight: 700; }
-            QLabel[role="status_ok"] { color: #34d399; font-weight: 700; }
+            QLabel[role="status_ok"] { color: #00A3FF; font-weight: 700; }
             QLabel[role="status_off"] { color: #94a3b8; font-weight: 700; }
             QLabel[role="status_warn"] { color: #fbbf24; font-weight: 700; }
             QLabel[role="status_err"] { color: #f87171; font-weight: 700; }
             QLineEdit, QPlainTextEdit, QTableWidget {
-                background: #0b1220;
-                border: 1px solid #263244;
+                background: #0a1726;
+                border: 1px solid #1f3850;
                 border-radius: 8px;
                 padding: 6px;
-                selection-background-color: #1d4ed8;
+                selection-background-color: #00A3FF;
             }
             QPushButton {
-                background: #1d4ed8;
+                background: #00A3FF;
                 color: white;
                 border: none;
                 border-radius: 8px;
                 padding: 8px 12px;
                 font-weight: 600;
             }
-            QPushButton:hover { background: #2563eb; }
-            QPushButton[variant="secondary"] { background: #334155; }
+            QPushButton:hover { background: #13b0ff; }
+            QPushButton[variant="secondary"] { background: #27455d; }
             QPushButton[variant="warn"] { background: #b45309; }
+            QPushButton[variant="nav"] {
+                background: transparent;
+                border-radius: 6px;
+                color: #dbeafe;
+                padding: 8px 20px;
+                border: 1px solid transparent;
+            }
+            QPushButton[variant="nav"]:hover {
+                background: #0b2033;
+                border: 1px solid #00A3FF;
+            }
             QHeaderView::section {
-                background: #172033;
+                background: #102235;
                 color: #cbd5e1;
                 border: none;
                 padding: 8px;
                 font-weight: 600;
             }
-            QTableWidget { gridline-color: #1f2937; }
+            QTableWidget { gridline-color: #173247; }
             QStatusBar { background: #111827; color: #cbd5e1; }
             """
         )
+
+    def _build_top_navigation(self) -> QWidget:
+        box = QFrame()
+        box.setStyleSheet('QFrame {background:#0e1b2d; border:1px solid #183248; border-radius:10px;}')
+        layout = QHBoxLayout(box)
+        layout.setContentsMargins(12, 8, 12, 8)
+        self.title_label = QLabel('单件分离SCS')
+        self.title_label.setStyleSheet('QLabel {font-size: 22px; font-weight: 700; color: #00A3FF;}')
+        layout.addWidget(self.title_label)
+        layout.addSpacing(24)
+
+        self.settings_btn = QPushButton('设置 / Settings')
+        self.settings_btn.setProperty('variant', 'nav')
+        self.query_btn = QPushButton('查询 / Query')
+        self.query_btn.setProperty('variant', 'nav')
+        self.help_btn = QPushButton('帮助 / Help')
+        self.help_btn.setProperty('variant', 'nav')
+        layout.addWidget(self.settings_btn)
+        layout.addWidget(self.query_btn)
+        layout.addWidget(self.help_btn)
+        layout.addStretch(1)
+        return box
 
     def _build_header_bar(self) -> QWidget:
         box = QGroupBox('Station Overview')
@@ -140,16 +174,16 @@ class MainWindow(QMainWindow):
         self.site_card = self._make_stat_card('Site', '-')
         self.device_card = self._make_stat_card('Device', '-')
         self.algorithm_card = self._make_stat_card('Algorithm', '-')
-        self.channels_card = self._make_stat_card('Channels', '-')
-        self.kpi_processed_card = self._make_stat_card('Processed', '0')
+        self.version_card = self._make_stat_card('Version', '-')
+        self.kpi_processed_card = self._make_stat_card('Parcel Count', '0')
         self.kpi_throughput_card = self._make_stat_card('Throughput/min', '0')
-        self.kpi_efficiency_card = self._make_stat_card('Efficiency', '0%')
+        self.kpi_efficiency_card = self._make_stat_card('Success Rate', '0%')
         self.kpi_status_card = self._make_stat_card('Client Status', 'RUNNING', status='ok')
         for card in [
             self.site_card,
             self.device_card,
             self.algorithm_card,
-            self.channels_card,
+            self.version_card,
             self.kpi_processed_card,
             self.kpi_throughput_card,
             self.kpi_efficiency_card,
@@ -161,7 +195,7 @@ class MainWindow(QMainWindow):
     def _make_stat_card(self, title: str, value: str, status: str | None = None) -> QFrame:
         frame = QFrame()
         frame.setFrameShape(QFrame.Shape.NoFrame)
-        frame.setStyleSheet('QFrame {background:#0b1220; border:1px solid #263244; border-radius:10px;}')
+        frame.setStyleSheet('QFrame {background:#091827; border:1px solid #183248; border-radius:10px;}')
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(10, 10, 10, 10)
         title_label = QLabel(title)
@@ -178,7 +212,7 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setSpacing(12)
-        layout.addWidget(self._build_config_widget())
+        layout.addWidget(self._build_query_and_logs_widget())
         layout.addWidget(self._build_channel_widget())
         layout.addStretch(1)
         return widget
@@ -195,9 +229,27 @@ class MainWindow(QMainWindow):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setSpacing(12)
+        layout.addWidget(self._build_config_widget())
         layout.addWidget(self._build_system_widget())
-        layout.addWidget(self._build_logs_widget(), 1)
         return widget
+
+    def _build_query_and_logs_widget(self) -> QWidget:
+        box = QGroupBox('Query & Logs')
+        layout = QVBoxLayout(box)
+        query_bar = QHBoxLayout()
+        self.query_keyword = QLineEdit()
+        self.query_keyword.setPlaceholderText('输入包裹号 / item id / keyword')
+        self.query_action_btn = QPushButton('查询')
+        self.query_action_btn.setProperty('variant', 'secondary')
+        query_bar.addWidget(self.query_keyword, 1)
+        query_bar.addWidget(self.query_action_btn)
+        layout.addLayout(query_bar)
+
+        self.logs_editor = QPlainTextEdit()
+        self.logs_editor.setReadOnly(True)
+        self.logs_editor.setPlaceholderText('日志已移动到查询按钮下方 / Logs moved below Query button')
+        layout.addWidget(self.logs_editor, 1)
+        return box
 
     def _build_config_widget(self) -> QWidget:
         box = QGroupBox('Algorithm Configuration')
@@ -308,22 +360,13 @@ class MainWindow(QMainWindow):
             layout.addWidget(card, r, c)
         return box
 
-    def _build_logs_widget(self) -> QWidget:
-        box = QGroupBox('Logs / Alerts')
-        layout = QVBoxLayout(box)
-        self.logs_editor = QPlainTextEdit()
-        self.logs_editor.setReadOnly(True)
-        self.logs_editor.setPlaceholderText('Runtime logs and alerts...')
-        layout.addWidget(self.logs_editor)
-        return box
-
     def _load_context_values(self) -> None:
         client = self.context.client_settings
         algo = self.context.algorithm_settings
         self.site_card.value_label.setText(client.site_id)
         self.device_card.value_label.setText(client.device_id)
         self.algorithm_card.value_label.setText(algo.algorithm_name)
-        self.channels_card.value_label.setText(', '.join(client.ingest.enabled_channels) or '-')
+        self.version_card.value_label.setText(getattr(algo, 'version', '1.0.0') if hasattr(algo, 'version') else '1.0.0')
         self.output_dir_label.setText(str(algo.config_output_dir))
         if hasattr(algo, 'speed'):
             self.speed_edit.setText(str(getattr(algo, 'speed')))
@@ -334,9 +377,7 @@ class MainWindow(QMainWindow):
         self._set_channel_status(self.http_status, client.ingest.http.enabled)
         self._set_channel_status(self.unix_status, client.ingest.unix_socket.enabled)
         self._set_channel_status(self.zmq_status, client.ingest.zeromq.enabled)
-        self.logs_editor.appendPlainText(
-            'Enabled channels: ' + ', '.join(self.context.channel_manager.enabled_channel_names())
-        )
+        self.logs_editor.appendPlainText('Enabled channels: ' + ', '.join(self.context.channel_manager.enabled_channel_names()))
         self.logger.info('UI loaded context values for site=%s device=%s', client.site_id, client.device_id)
 
     def _set_channel_status(self, label: QLabel, enabled: bool) -> None:
@@ -415,7 +456,7 @@ class MainWindow(QMainWindow):
     def _color_result_item(self, item: QTableWidgetItem, result: str) -> None:
         val = result.lower()
         if val == 'success':
-            item.setForeground(QColor('#34d399'))
+            item.setForeground(QColor('#00A3FF'))
         elif val in {'fail', 'error'}:
             item.setForeground(QColor('#f87171'))
         else:
