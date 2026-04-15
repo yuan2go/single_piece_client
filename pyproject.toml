@@ -1,0 +1,46 @@
+[project]
+name = "single-piece-client"
+version = "0.1.0"
+description = "PyQt6 desktop edge client for single-piece separation stations"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+authors = [{ name = "yuan2go" }]
+license = { text = "MIT" }
+dependencies = [
+  "PyQt6>=6.7,<7",
+  "pydantic>=2.8,<3",
+  "psutil>=5.9,<8",
+  "watchdog>=4.0,<7",
+  "pyinstaller>=6.10,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.3,<9",
+  "pytest-cov>=5.0,<6",
+  "ruff>=0.6,<1",
+]
+
+[project.scripts]
+single-piece-client = "app.main:main"
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
