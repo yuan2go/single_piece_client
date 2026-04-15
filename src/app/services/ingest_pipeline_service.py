@@ -22,6 +22,8 @@ class IngestPipelineService:
 
     def handle_raw_message(self, message: RawMessage) -> None:
         records = self.parser_registry.parse(message)
+        if not records:
+            return
         metrics = self.metrics_service.push_records(records)
         for callback in self._callbacks:
             callback(records, metrics)

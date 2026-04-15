@@ -7,14 +7,15 @@ from typing import Any
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import (
     QFormLayout,
+    QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QMessageBox,
     QPlainTextEdit,
     QPushButton,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -33,20 +34,17 @@ class MainWindow(QMainWindow):
         self.context = context
         self.logger = logging.getLogger(__name__)
         self.setWindowTitle('Single Piece Client')
-        self.resize(1120, 760)
+        self.resize(1360, 860)
 
-        self.tabs = QTabWidget()
-        self.config_widget = self._build_config_widget()
-        self.realtime_widget = self._build_realtime_widget()
-        self.system_widget = self._build_system_widget()
-        self.metrics_widget = self._build_metrics_widget()
-        self.logs_widget = self._build_logs_widget()
-        self.tabs.addTab(self.config_widget, 'Config')
-        self.tabs.addTab(self.realtime_widget, 'Realtime')
-        self.tabs.addTab(self.system_widget, 'System')
-        self.tabs.addTab(self.metrics_widget, 'Metrics')
-        self.tabs.addTab(self.logs_widget, 'Logs')
-        self.setCentralWidget(self.tabs)
+        root = QWidget()
+        root_layout = QVBoxLayout(root)
+        root_layout.addWidget(self._build_header())
+        body = QHBoxLayout()
+        body.addWidget(self._build_left_panel(), 1)
+        body.addWidget(self._build_center_panel(), 2)
+        body.addWidget(self._build_right_panel(), 1)
+        root_layout.addLayout(body)
+        self.setCentralWidget(root)
 
         self.context.ingest_pipeline_service.on_records(self._handle_records)
         self.system_timer = QTimer(self)
@@ -55,57 +53,119 @@ class MainWindow(QMainWindow):
         self.system_timer.start()
         self._load_context_values()
         self.context.start()
-        self.statusBar().showMessage('Channels started')
+        self.statusBar().showMessage('Client started')
 
-    def _build_config_widget(self) -> QWidget:
+    def _build_header(self) -> QWidget:
+        box = QGroupBox('Station Overview')
+        layout = QGridLayout(box)
+        self.site_card = QLabel('-')
+        self.device_card = QLabel('-')
+        self.algorithm_card = QLabel('-')
+        self.channels_card = QLabel('-')
+        self.kpi_processed = QLabel('0')
+        self.kpi_throughput = QLabel('0')
+        self.kpi_efficiency = QLabel('0%')
+        self.kpi_status = QLabel('RUNNING')
+        layout.addWidget(QLabel('Site'), 0, 0)
+        layout.addWidget(self.site_card, 0, 1)
+        layout.addWidget(QLabel('Device'), 0, 2)
+        layout.addWidget(self.device_card, 0, 3)
+        layout.addWidget(QLabel('Algorithm'), 0, 4)
+        layout.addWidget(self.algorithm_card, 0, 5)
+        layout.addWidget(QLabel('Channels'), 1, 0)
+        layout.addWidget(self.channels_card, 1, 1, 1, 3)
+        layout.addWidget(QLabel('Processed'), 1, 4)
+        layout.addWidget(self.kpi_processed, 1, 5)
+        layout.addWidget(QLabel('Throughput/min'), 2, 0)
+        layout.addWidget(self.kpi_throughput, 2, 1)
+        layout.addWidget(QLabel('Efficiency'), 2, 2)
+        layout.addWidget(self.kpi_efficiency, 2, 3)
+        layout.addWidget(QLabel('Client Status'), 2, 4)
+        layout.addWidget(self.kpi_status, 2, 5)
+        return box
+
+    def _build_left_panel(self) -> QWidget:
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        box = QGroupBox('Algorithm Config')
-        form = QFormLayout(box)
-        self.site_id_label = QLabel()
-        self.device_id_label = QLabel()
-        self.algorithm_name_label = QLabel()
-        self.channels_label = QLabel()
+        layout.addWidget(self._build_config_widget())
+        layout.addWidget(self._build_channel_widget())
+        return widget
+
+    def _build_center_panel(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.addWidget(self._build_realtime_widget())
+        layout.addWidget(self._build_metrics_widget())
+        return widget
+
+    def _build_right_panel(self) -> QWidget:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.addWidget(self._build_system_widget())
+        layout.addWidget(self._build_logs_widget())
+        return widget
+
+    def _build_config_widget(self) -> QWidget:
+        box = QGroupBox('Algorithm Configuration')
+        layout = QVBoxLayout(box)
+        form = QFormLayout()
         self.output_dir_label = QLabel()
         self.speed_edit = QLineEdit('1.0')
         self.threshold_edit = QLineEdit('0.85')
-        self.config_preview = QPlainTextEdit()
-        self.config_preview.setReadOnly(True)
-        self.config_status = QLabel('Ready')
-        form.addRow('Site ID', self.site_id_label)
-        form.addRow('Device ID', self.device_id_label)
-        form.addRow('Algorithm', self.algorithm_name_label)
-        form.addRow('Enabled Channels', self.channels_label)
         form.addRow('Config Output Dir', self.output_dir_label)
         form.addRow('Speed', self.speed_edit)
         form.addRow('Threshold', self.threshold_edit)
-        layout.addWidget(box)
-        preview_btn = QPushButton('Preview Algorithm Config')
-        write_btn = QPushButton('Write Algorithm Config')
+        layout.addLayout(form)
+
+        buttons = QHBoxLayout()
+        preview_btn = QPushButton('Preview Config')
+        write_btn = QPushButton('Write Config')
         simulate_btn = QPushButton('Inject Sample Event')
         preview_btn.clicked.connect(self.preview_config)
         write_btn.clicked.connect(self.write_config)
         simulate_btn.clicked.connect(self.inject_sample_event)
-        layout.addWidget(preview_btn)
-        layout.addWidget(write_btn)
-        layout.addWidget(simulate_btn)
+        buttons.addWidget(preview_btn)
+        buttons.addWidget(write_btn)
+        buttons.addWidget(simulate_btn)
+        layout.addLayout(buttons)
+
+        self.config_preview = QPlainTextEdit()
+        self.config_preview.setReadOnly(True)
+        self.config_status = QLabel('Ready')
         layout.addWidget(self.config_preview)
         layout.addWidget(self.config_status)
-        return widget
+        return box
+
+    def _build_channel_widget(self) -> QWidget:
+        box = QGroupBox('Ingest Channels')
+        form = QFormLayout(box)
+        self.file_status = QLabel('-')
+        self.tcp_status = QLabel('-')
+        self.http_status = QLabel('-')
+        self.unix_status = QLabel('-')
+        self.zmq_status = QLabel('-')
+        form.addRow('File', self.file_status)
+        form.addRow('TCP', self.tcp_status)
+        form.addRow('HTTP', self.http_status)
+        form.addRow('Unix Socket', self.unix_status)
+        form.addRow('ZeroMQ', self.zmq_status)
+        return box
 
     def _build_realtime_widget(self) -> QWidget:
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        box = QGroupBox('Realtime Feed')
+        layout = QVBoxLayout(box)
         self.realtime_status = QLabel('Waiting for realtime data')
-        self.realtime_table = QTableWidget(0, 5)
-        self.realtime_table.setHorizontalHeaderLabels(['Timestamp', 'Item', 'Device', 'Result', 'Exception'])
+        self.realtime_table = QTableWidget(0, 6)
+        self.realtime_table.setHorizontalHeaderLabels(
+            ['Timestamp', 'Item', 'Device', 'Result', 'Proc(ms)', 'Exception']
+        )
         layout.addWidget(self.realtime_status)
         layout.addWidget(self.realtime_table)
-        return widget
+        return box
 
     def _build_system_widget(self) -> QWidget:
-        widget = QWidget()
-        form = QFormLayout(widget)
+        box = QGroupBox('System Health')
+        form = QFormLayout(box)
         self.cpu_label = QLabel('0')
         self.memory_label = QLabel('0')
         self.disk_label = QLabel('0')
@@ -114,11 +174,11 @@ class MainWindow(QMainWindow):
         form.addRow('Memory %', self.memory_label)
         form.addRow('Disk %', self.disk_label)
         form.addRow('Disk Free GB', self.disk_free_label)
-        return widget
+        return box
 
     def _build_metrics_widget(self) -> QWidget:
-        widget = QWidget()
-        form = QFormLayout(widget)
+        box = QGroupBox('KPI & Throughput')
+        form = QFormLayout(box)
         self.processed_label = QLabel('0')
         self.success_label = QLabel('0')
         self.exception_label = QLabel('0')
@@ -129,31 +189,46 @@ class MainWindow(QMainWindow):
         form.addRow('Exception', self.exception_label)
         form.addRow('Throughput / min', self.throughput_label)
         form.addRow('Efficiency', self.efficiency_label)
-        return widget
+        return box
 
     def _build_logs_widget(self) -> QWidget:
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
+        box = QGroupBox('Logs / Alerts')
+        layout = QVBoxLayout(box)
         self.logs_editor = QPlainTextEdit()
         self.logs_editor.setReadOnly(True)
         layout.addWidget(self.logs_editor)
-        return widget
+        return box
 
     def _load_context_values(self) -> None:
         client = self.context.client_settings
         algo = self.context.algorithm_settings
-        self.site_id_label.setText(client.site_id)
-        self.device_id_label.setText(client.device_id)
-        self.algorithm_name_label.setText(algo.algorithm_name)
-        self.channels_label.setText(', '.join(client.ingest.enabled_channels) or '-')
+        self.site_card.setText(client.site_id)
+        self.device_card.setText(client.device_id)
+        self.algorithm_card.setText(algo.algorithm_name)
+        self.channels_card.setText(', '.join(client.ingest.enabled_channels) or '-')
         self.output_dir_label.setText(str(algo.config_output_dir))
         if hasattr(algo, 'speed'):
             self.speed_edit.setText(str(getattr(algo, 'speed')))
         if hasattr(algo, 'threshold'):
             self.threshold_edit.setText(str(getattr(algo, 'threshold')))
+        self._set_channel_status('file', client.ingest.file.enabled)
+        self._set_channel_status('tcp', client.ingest.tcp.enabled)
+        self._set_channel_status('http', client.ingest.http.enabled)
+        self._set_channel_status('unix_socket', client.ingest.unix_socket.enabled)
+        self._set_channel_status('zeromq', client.ingest.zeromq.enabled)
         self.logs_editor.appendPlainText(
             'Enabled channels: ' + ', '.join(self.context.channel_manager.enabled_channel_names())
         )
+
+    def _set_channel_status(self, name: str, enabled: bool) -> None:
+        target = {
+            'file': self.file_status,
+            'tcp': self.tcp_status,
+            'http': self.http_status,
+            'unix_socket': self.unix_status,
+            'zeromq': self.zmq_status,
+        }[name]
+        target.setText('ENABLED' if enabled else 'DISABLED')
 
     def _collect_overrides(self) -> dict[str, Any]:
         overrides: dict[str, Any] = {}
@@ -200,7 +275,8 @@ class MainWindow(QMainWindow):
             self.realtime_table.setItem(row, 1, QTableWidgetItem(record.item_id))
             self.realtime_table.setItem(row, 2, QTableWidgetItem(record.device_id))
             self.realtime_table.setItem(row, 3, QTableWidgetItem(record.result))
-            self.realtime_table.setItem(row, 4, QTableWidgetItem(record.exception_type or ''))
+            self.realtime_table.setItem(row, 4, QTableWidgetItem(str(record.process_time_ms)))
+            self.realtime_table.setItem(row, 5, QTableWidgetItem(record.exception_type or ''))
         if records:
             self.realtime_status.setText(f'Last update: {records[-1].timestamp.isoformat(timespec="seconds")}')
         while self.realtime_table.rowCount() > 200:
@@ -224,6 +300,9 @@ class MainWindow(QMainWindow):
         self.exception_label.setText(str(metrics.exception_count))
         self.throughput_label.setText(f'{metrics.throughput_per_min:.2f}')
         self.efficiency_label.setText(f'{metrics.efficiency_rate:.2%}')
+        self.kpi_processed.setText(str(metrics.processed_count))
+        self.kpi_throughput.setText(f'{metrics.throughput_per_min:.2f}')
+        self.kpi_efficiency.setText(f'{metrics.efficiency_rate:.2%}')
 
     def closeEvent(self, event) -> None:  # noqa: N802
         self.context.stop()

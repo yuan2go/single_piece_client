@@ -6,7 +6,7 @@
   "ui_refresh_ms": 1000,
   "log_level": "INFO",
   "ingest": {
-    "enabled_channels": ["file", "tcp"],
+    "enabled_channels": ["file", "tcp", "http", "unix_socket", "zeromq"],
     "file": {
       "enabled": true,
       "watch_mode": "directory",
@@ -22,9 +22,26 @@
       "message_mode": "line",
       "parser_type": "tcp_json_default"
     },
-    "http": {"enabled": false},
-    "unix_socket": {"enabled": false},
-    "zeromq": {"enabled": false}
+    "http": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 9102,
+      "endpoint": "/events",
+      "parser_type": "http_json_default"
+    },
+    "unix_socket": {
+      "enabled": true,
+      "path": "/tmp/single_piece_algo.sock",
+      "socket_type": "stream",
+      "parser_type": "unix_json_default"
+    },
+    "zeromq": {
+      "enabled": true,
+      "mode": "pull",
+      "endpoint": "tcp://127.0.0.1:5555",
+      "topic": "",
+      "parser_type": "zmq_json_default"
+    }
   },
   "monitor": {
     "enabled": true,

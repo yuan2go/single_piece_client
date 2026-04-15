@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 APP_NAME="single-piece-client"
-VERSION="0.2.0"
+VERSION="0.3.0"
 ARCH="amd64"
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DIST_DIR="$ROOT_DIR/dist/$APP_NAME"

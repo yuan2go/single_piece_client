@@ -25,7 +25,7 @@ class AppContext:
         self.metrics_service = MetricsService(window_seconds=60)
         self.ingest_pipeline_service = IngestPipelineService(self.parser_registry, self.metrics_service)
         self.system_monitor_service = SystemMonitorService(PsutilAdapter())
-        self.channel_manager = ChannelManager(self.client_settings, self.algorithm_settings.algorithm_type)
+        self.channel_manager = ChannelManager(self.client_settings, self.algorithm_settings)
         self.channel_manager.build_channels()
         self.channel_manager.set_callback(self.ingest_pipeline_service.handle_raw_message)
 
@@ -39,12 +39,8 @@ class AppContext:
         payload = (
             '{"timestamp": "2026-04-15T12:00:00", '
             '"item_id": "sample-001", '
-            '"device_id": "' + self.client_settings.device_id + '", '
+            f'"device_id": "{self.client_settings.device_id}", '
             '"result": "success", '
             '"process_time_ms": 42}'
         )
-        for channel in self.channel_manager.channels:
-            ingest = getattr(channel, 'ingest_text', None)
-            if callable(ingest):
-                ingest(payload)
-                return
+        self.channel_manager.inject_sample(payload)

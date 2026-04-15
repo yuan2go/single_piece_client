@@ -1,3 +1,6 @@
+from pathlib import Path
+
+from app.config.algorithm_settings import DefaultAlgorithmSettings
 from app.config.client_settings import ClientSettings
 from app.ingest.channel_manager import ChannelManager
 
@@ -14,6 +17,7 @@ def test_channel_manager_builds_enabled_channels():
             },
         }
     )
-    manager = ChannelManager(settings, 'default')
+    algo = DefaultAlgorithmSettings(config_output_dir=Path('./runtime/test/config'))
+    manager = ChannelManager(settings, algo)
     channels = manager.build_channels()
     assert len(channels) == 3

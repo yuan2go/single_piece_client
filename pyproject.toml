@@ -1,6 +1,6 @@
 [project]
 name = "single-piece-client"
-version = "0.2.0"
+version = "0.3.0"
 description = "PyQt6 desktop edge client for single-piece separation stations"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -11,6 +11,7 @@ dependencies = [
   "pydantic>=2.8,<3",
   "psutil>=5.9,<8",
   "watchdog>=4.0,<7",
+  "pyzmq>=26,<28",
   "pyinstaller>=6.10,<7",
 ]
 
