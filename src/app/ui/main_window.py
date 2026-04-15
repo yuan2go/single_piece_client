@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from dataclasses import dataclass
+from typing import Any, Callable
 
 from PyQt6.QtCore import QPointF, QRectF, QTimer, Qt
 from PyQt6.QtGui import QColor, QPainter, QPen, QPolygonF
@@ -85,22 +86,46 @@ I18N = {
         'disk_free': '剩余磁盘 / Disk Free GB',
         'config_preview_placeholder': '算法配置预览显示在这里...',
         'ready': '就绪 / Ready',
-        'config_dialog_title': '商用设置面板 / Settings',
+        'config_dialog_title': '完整配置中心 / Configuration Center',
         'save': '确定',
         'cancel': '取消',
         'apply': '应用',
         'tab_general': '基础设置',
         'tab_ui': '界面设置',
         'tab_display': '显示设置',
-        'help_text': '当前版本支持：商用设置面板、矩阵热力显示、活跃包裹高亮与流向指示。',
-        'flow_direction': '流向 / Flow',
+        'tab_channels': '通道设置',
+        'tab_monitor': '监控设置',
+        'tab_algorithm': '算法设置',
+        'help_text': '当前版本支持：完整配置中心、矩阵热力显示、活跃包裹高亮、流向指示与格子详情。',
         'matrix_status': '矩阵状态 / Matrix Status',
-        'group_station': '站点设置',
         'group_matrix': '矩阵设置',
         'group_display': '显示选项',
         'group_language': '语言切换',
+        'group_channels': '通道开关',
+        'group_monitor': '系统监控',
+        'group_algorithm': '算法参数',
+        'group_client': '客户端参数',
         'show_index': '显示行列编号',
         'show_arrow': '显示流向箭头',
+        'detail_panel': '矩阵交互详情 / Matrix Detail',
+        'detail_row': '选中行 / Row',
+        'detail_col': '选中列 / Col',
+        'detail_speed': '当前速度 / Speed',
+        'detail_active': '活跃状态 / Active',
+        'detail_parcels': '关联包裹数 / Parcels',
+        'detail_runtime': '运行摘要 / Runtime',
+        'detail_none': '点击矩阵中的任意小车格子查看详情',
+        'enabled': '启用',
+        'sample_interval': '采样间隔(ms)',
+        'selected_algorithm': '当前算法',
+        'log_level': '日志级别',
+        'host': '主机',
+        'port': '端口',
+        'path': '路径',
+        'endpoint': '端点',
+        'topic': '主题',
+        'threshold': '阈值',
+        'speed': '速度参数',
     },
     'en': {
         'window_title': 'Single Piece Client',
@@ -150,77 +175,107 @@ I18N = {
         'disk_free': 'Disk Free GB',
         'config_preview_placeholder': 'Algorithm config preview will appear here...',
         'ready': 'Ready',
-        'config_dialog_title': 'Commercial Settings Panel',
+        'config_dialog_title': 'Configuration Center',
         'save': 'OK',
         'cancel': 'Cancel',
         'apply': 'Apply',
         'tab_general': 'General',
         'tab_ui': 'UI',
         'tab_display': 'Display',
-        'help_text': 'Current version supports commercial settings panel, matrix heatmap, active parcel highlight, and flow direction indicators.',
-        'flow_direction': 'Flow',
+        'tab_channels': 'Channels',
+        'tab_monitor': 'Monitor',
+        'tab_algorithm': 'Algorithm',
+        'help_text': 'Current version supports configuration center, matrix heatmap, active parcel highlight, flow direction indicators, and cell detail view.',
         'matrix_status': 'Matrix Status',
-        'group_station': 'Station Settings',
         'group_matrix': 'Matrix Settings',
         'group_display': 'Display Options',
         'group_language': 'Language',
+        'group_channels': 'Channel Switches',
+        'group_monitor': 'System Monitor',
+        'group_algorithm': 'Algorithm Parameters',
+        'group_client': 'Client Parameters',
         'show_index': 'Show row/col index',
         'show_arrow': 'Show flow arrow',
+        'detail_panel': 'Matrix Detail',
+        'detail_row': 'Selected Row',
+        'detail_col': 'Selected Col',
+        'detail_speed': 'Current Speed',
+        'detail_active': 'Active',
+        'detail_parcels': 'Related Parcels',
+        'detail_runtime': 'Runtime Summary',
+        'detail_none': 'Click any matrix cell to inspect details',
+        'enabled': 'Enabled',
+        'sample_interval': 'Sample Interval(ms)',
+        'selected_algorithm': 'Selected Algorithm',
+        'log_level': 'Log Level',
+        'host': 'Host',
+        'port': 'Port',
+        'path': 'Path',
+        'endpoint': 'Endpoint',
+        'topic': 'Topic',
+        'threshold': 'Threshold',
+        'speed': 'Speed Parameter',
     },
 }
 
 
-class SettingsDialog(QDialog):
-    def __init__(self, parent: QWidget | None, rows: int, cols: int, language: str, show_aux: bool, show_coord: bool, show_index: bool, show_arrow: bool) -> None:
+@dataclass
+class CellSelection:
+    row: int
+    col: int
+    speed: float
+    active: bool
+    parcel_count: int
+
+
+class ConfigCenterDialog(QDialog):
+    def __init__(self, parent: QWidget | None, snapshot: dict[str, Any], language: str) -> None:
         super().__init__(parent)
+        self.language = language
         self.setModal(True)
-        self.resize(560, 420)
+        self.resize(720, 520)
         root = QVBoxLayout(self)
         self.tabs = QTabWidget()
         root.addWidget(self.tabs)
 
-        self.rows_spin = QSpinBox(); self.rows_spin.setRange(1, 100); self.rows_spin.setValue(rows)
-        self.cols_spin = QSpinBox(); self.cols_spin.setRange(1, 100); self.cols_spin.setValue(cols)
-        self.language_combo = QComboBox(); self.language_combo.addItems(['中文', 'English']); self.language_combo.setCurrentIndex(0 if language == 'zh' else 1)
-        self.show_aux_checkbox = QCheckBox(); self.show_aux_checkbox.setChecked(show_aux)
-        self.show_coord_checkbox = QCheckBox(); self.show_coord_checkbox.setChecked(show_coord)
-        self.show_index_checkbox = QCheckBox(); self.show_index_checkbox.setChecked(show_index)
-        self.show_arrow_checkbox = QCheckBox(); self.show_arrow_checkbox.setChecked(show_arrow)
+        self.snapshot = snapshot
 
-        self.general_tab = QWidget(); self.ui_tab = QWidget(); self.display_tab = QWidget()
-        self.tabs.addTab(self.general_tab, '')
-        self.tabs.addTab(self.ui_tab, '')
-        self.tabs.addTab(self.display_tab, '')
+        self.general_tab = QWidget(); self.ui_tab = QWidget(); self.display_tab = QWidget(); self.channels_tab = QWidget(); self.monitor_tab = QWidget(); self.algorithm_tab = QWidget()
+        for tab in [self.general_tab, self.ui_tab, self.display_tab, self.channels_tab, self.monitor_tab, self.algorithm_tab]:
+            self.tabs.addTab(tab, '')
 
-        general_layout = QVBoxLayout(self.general_tab)
-        station_box = QGroupBox()
-        station_form = QFormLayout(station_box)
-        self.rows_label = QLabel(); self.cols_label = QLabel()
-        station_form.addRow(self.rows_label, self.rows_spin)
-        station_form.addRow(self.cols_label, self.cols_spin)
-        general_layout.addWidget(station_box)
-        general_layout.addStretch(1)
-        self.station_box = station_box
+        self.rows_spin = QSpinBox(); self.rows_spin.setRange(1, 100); self.rows_spin.setValue(snapshot['rows'])
+        self.cols_spin = QSpinBox(); self.cols_spin.setRange(1, 100); self.cols_spin.setValue(snapshot['cols'])
+        self.language_combo = QComboBox(); self.language_combo.addItems(['中文', 'English']); self.language_combo.setCurrentIndex(0 if snapshot['language'] == 'zh' else 1)
+        self.show_aux_checkbox = QCheckBox(); self.show_aux_checkbox.setChecked(snapshot['show_aux'])
+        self.show_coord_checkbox = QCheckBox(); self.show_coord_checkbox.setChecked(snapshot['show_coord'])
+        self.show_index_checkbox = QCheckBox(); self.show_index_checkbox.setChecked(snapshot['show_index'])
+        self.show_arrow_checkbox = QCheckBox(); self.show_arrow_checkbox.setChecked(snapshot['show_arrow'])
 
-        ui_layout = QVBoxLayout(self.ui_tab)
-        lang_box = QGroupBox()
-        lang_form = QFormLayout(lang_box)
-        self.language_label = QLabel()
-        lang_form.addRow(self.language_label, self.language_combo)
-        ui_layout.addWidget(lang_box)
-        ui_layout.addStretch(1)
-        self.lang_box = lang_box
+        self.file_enabled = QCheckBox(); self.file_enabled.setChecked(snapshot['file_enabled'])
+        self.tcp_enabled = QCheckBox(); self.tcp_enabled.setChecked(snapshot['tcp_enabled'])
+        self.http_enabled = QCheckBox(); self.http_enabled.setChecked(snapshot['http_enabled'])
+        self.unix_enabled = QCheckBox(); self.unix_enabled.setChecked(snapshot['unix_enabled'])
+        self.zmq_enabled = QCheckBox(); self.zmq_enabled.setChecked(snapshot['zmq_enabled'])
+        self.tcp_host = QLineEdit(snapshot['tcp_host'])
+        self.tcp_port = QSpinBox(); self.tcp_port.setRange(1, 65535); self.tcp_port.setValue(snapshot['tcp_port'])
+        self.http_host = QLineEdit(snapshot['http_host'])
+        self.http_port = QSpinBox(); self.http_port.setRange(1, 65535); self.http_port.setValue(snapshot['http_port'])
+        self.http_endpoint = QLineEdit(snapshot['http_endpoint'])
+        self.file_path = QLineEdit(snapshot['file_path'])
+        self.unix_path = QLineEdit(snapshot['unix_path'])
+        self.zmq_endpoint = QLineEdit(snapshot['zmq_endpoint'])
+        self.zmq_topic = QLineEdit(snapshot['zmq_topic'])
 
-        display_layout = QVBoxLayout(self.display_tab)
-        display_box = QGroupBox()
-        display_form = QFormLayout(display_box)
-        display_form.addRow(self.show_aux_checkbox)
-        display_form.addRow(self.show_coord_checkbox)
-        display_form.addRow(self.show_index_checkbox)
-        display_form.addRow(self.show_arrow_checkbox)
-        display_layout.addWidget(display_box)
-        display_layout.addStretch(1)
-        self.display_box = display_box
+        self.monitor_enabled = QCheckBox(); self.monitor_enabled.setChecked(snapshot['monitor_enabled'])
+        self.monitor_interval = QSpinBox(); self.monitor_interval.setRange(100, 10000); self.monitor_interval.setValue(snapshot['monitor_interval'])
+
+        self.algorithm_name = QLineEdit(snapshot['algorithm_name'])
+        self.log_level = QComboBox(); self.log_level.addItems(['DEBUG', 'INFO', 'WARNING', 'ERROR']); self.log_level.setCurrentText(snapshot['log_level'])
+        self.threshold_edit = QLineEdit(str(snapshot['threshold']))
+        self.speed_edit = QLineEdit(str(snapshot['speed']))
+
+        self._build_tabs()
 
         bottom = QHBoxLayout()
         bottom.addStretch(1)
@@ -233,10 +288,79 @@ class SettingsDialog(QDialog):
         bottom.addWidget(self.button_box)
         root.addLayout(bottom)
 
-        self._apply_callback = None
+        self._apply_callback: Callable[[ConfigCenterDialog], None] | None = None
         self.retranslate(language)
 
-    def on_apply(self, callback) -> None:
+    def _build_tabs(self) -> None:
+        general_layout = QVBoxLayout(self.general_tab)
+        general_box = QGroupBox()
+        general_form = QFormLayout(general_box)
+        self.rows_label = QLabel(); self.cols_label = QLabel()
+        general_form.addRow(self.rows_label, self.rows_spin)
+        general_form.addRow(self.cols_label, self.cols_spin)
+        general_layout.addWidget(general_box); general_layout.addStretch(1)
+        self.general_box = general_box
+
+        ui_layout = QVBoxLayout(self.ui_tab)
+        ui_box = QGroupBox()
+        ui_form = QFormLayout(ui_box)
+        self.language_label = QLabel()
+        ui_form.addRow(self.language_label, self.language_combo)
+        ui_layout.addWidget(ui_box); ui_layout.addStretch(1)
+        self.ui_box = ui_box
+
+        display_layout = QVBoxLayout(self.display_tab)
+        display_box = QGroupBox()
+        display_form = QFormLayout(display_box)
+        display_form.addRow(self.show_aux_checkbox)
+        display_form.addRow(self.show_coord_checkbox)
+        display_form.addRow(self.show_index_checkbox)
+        display_form.addRow(self.show_arrow_checkbox)
+        display_layout.addWidget(display_box); display_layout.addStretch(1)
+        self.display_box = display_box
+
+        channels_layout = QVBoxLayout(self.channels_tab)
+        channels_box = QGroupBox()
+        channels_form = QFormLayout(channels_box)
+        self.file_enabled.setText('File'); self.tcp_enabled.setText('TCP'); self.http_enabled.setText('HTTP'); self.unix_enabled.setText('Unix Socket'); self.zmq_enabled.setText('ZeroMQ')
+        channels_form.addRow(self.file_enabled)
+        channels_form.addRow(self.tcp_enabled)
+        channels_form.addRow(QLabel('TCP Host'), self.tcp_host)
+        channels_form.addRow(QLabel('TCP Port'), self.tcp_port)
+        channels_form.addRow(self.http_enabled)
+        channels_form.addRow(QLabel('HTTP Host'), self.http_host)
+        channels_form.addRow(QLabel('HTTP Port'), self.http_port)
+        channels_form.addRow(QLabel('HTTP Endpoint'), self.http_endpoint)
+        channels_form.addRow(self.unix_enabled)
+        channels_form.addRow(QLabel('File Path'), self.file_path)
+        channels_form.addRow(QLabel('Unix Path'), self.unix_path)
+        channels_form.addRow(self.zmq_enabled)
+        channels_form.addRow(QLabel('ZeroMQ Endpoint'), self.zmq_endpoint)
+        channels_form.addRow(QLabel('ZeroMQ Topic'), self.zmq_topic)
+        channels_layout.addWidget(channels_box); channels_layout.addStretch(1)
+        self.channels_box = channels_box
+
+        monitor_layout = QVBoxLayout(self.monitor_tab)
+        monitor_box = QGroupBox()
+        monitor_form = QFormLayout(monitor_box)
+        self.monitor_interval_label = QLabel()
+        monitor_form.addRow(self.monitor_enabled)
+        monitor_form.addRow(self.monitor_interval_label, self.monitor_interval)
+        monitor_layout.addWidget(monitor_box); monitor_layout.addStretch(1)
+        self.monitor_box = monitor_box
+
+        algorithm_layout = QVBoxLayout(self.algorithm_tab)
+        algorithm_box = QGroupBox()
+        algorithm_form = QFormLayout(algorithm_box)
+        self.algorithm_label = QLabel(); self.log_level_label = QLabel(); self.threshold_label = QLabel(); self.speed_label = QLabel()
+        algorithm_form.addRow(self.algorithm_label, self.algorithm_name)
+        algorithm_form.addRow(self.log_level_label, self.log_level)
+        algorithm_form.addRow(self.threshold_label, self.threshold_edit)
+        algorithm_form.addRow(self.speed_label, self.speed_edit)
+        algorithm_layout.addWidget(algorithm_box); algorithm_layout.addStretch(1)
+        self.algorithm_box = algorithm_box
+
+    def on_apply(self, callback: Callable[[ConfigCenterDialog], None]) -> None:
         self._apply_callback = callback
 
     def _emit_apply(self) -> None:
@@ -249,9 +373,15 @@ class SettingsDialog(QDialog):
         self.tabs.setTabText(0, tr['tab_general'])
         self.tabs.setTabText(1, tr['tab_ui'])
         self.tabs.setTabText(2, tr['tab_display'])
-        self.station_box.setTitle(tr['group_matrix'])
-        self.lang_box.setTitle(tr['group_language'])
+        self.tabs.setTabText(3, tr['tab_channels'])
+        self.tabs.setTabText(4, tr['tab_monitor'])
+        self.tabs.setTabText(5, tr['tab_algorithm'])
+        self.general_box.setTitle(tr['group_matrix'])
+        self.ui_box.setTitle(tr['group_language'])
         self.display_box.setTitle(tr['group_display'])
+        self.channels_box.setTitle(tr['group_channels'])
+        self.monitor_box.setTitle(tr['group_monitor'])
+        self.algorithm_box.setTitle(tr['group_algorithm'])
         self.rows_label.setText(tr['rows'])
         self.cols_label.setText(tr['cols'])
         self.language_label.setText(tr['language'])
@@ -259,6 +389,12 @@ class SettingsDialog(QDialog):
         self.show_coord_checkbox.setText(tr['show_coord'])
         self.show_index_checkbox.setText(tr['show_index'])
         self.show_arrow_checkbox.setText(tr['show_arrow'])
+        self.monitor_enabled.setText(tr['enabled'])
+        self.monitor_interval_label.setText(tr['sample_interval'])
+        self.algorithm_label.setText(tr['selected_algorithm'])
+        self.log_level_label.setText(tr['log_level'])
+        self.threshold_label.setText(tr['threshold'])
+        self.speed_label.setText(tr['speed'])
         self.apply_btn.setText(tr['apply'])
         self.button_box.button(QDialogButtonBox.StandardButton.Ok).setText(tr['save'])
         self.button_box.button(QDialogButtonBox.StandardButton.Cancel).setText(tr['cancel'])
@@ -276,6 +412,10 @@ class MatrixCanvas(QWidget):
         self.show_index = True
         self.show_arrow = True
         self.setMinimumHeight(440)
+        self._selection_callback: Callable[[CellSelection], None] | None = None
+
+    def on_cell_selected(self, callback: Callable[[CellSelection], None]) -> None:
+        self._selection_callback = callback
 
     def set_matrix_shape(self, rows: int, cols: int) -> None:
         self.rows = max(1, rows)
@@ -350,17 +490,33 @@ class MatrixCanvas(QWidget):
             active.add((row, col))
         return active
 
+    def _cell_for_pos(self, pos: QPointF) -> tuple[int, int] | None:
+        for row in range(self.rows):
+            for col in range(self.cols):
+                if self._cell_rect(row, col).contains(pos):
+                    return row, col
+        return None
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        cell = self._cell_for_pos(event.position())
+        if cell and callable(self._selection_callback):
+            row, col = cell
+            idx = row * self.cols + col
+            speed = self.car_speeds[idx] if idx < len(self.car_speeds) else 0.0
+            active_cells = self._active_cells()
+            parcel_count = 1 if (row, col) in active_cells else 0
+            self._selection_callback(CellSelection(row=row, col=col, speed=speed, active=(row, col) in active_cells, parcel_count=parcel_count))
+        super().mousePressEvent(event)
+
     def paintEvent(self, event) -> None:  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.fillRect(self.rect(), QColor('#081421'))
         painter.setPen(QPen(QColor('#183248'), 1))
         painter.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 10, 10)
-
         total_cells = self.rows * self.cols
         padded = self.car_speeds + [0.0] * max(0, total_cells - len(self.car_speeds))
         active_cells = self._active_cells()
-
         for idx in range(total_cells):
             row = idx // self.cols
             col = idx % self.cols
@@ -376,7 +532,6 @@ class MatrixCanvas(QWidget):
             if self.show_index:
                 painter.setPen(QColor('#8ccdf0'))
                 painter.drawText(rect.adjusted(8, 0, -8, -6), Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignRight, f'R{row+1}C{col+1}')
-
         if self.show_index:
             painter.setPen(QColor('#7eb8d6'))
             for col in range(self.cols):
@@ -385,17 +540,14 @@ class MatrixCanvas(QWidget):
             for row in range(self.rows):
                 rect = self._cell_rect(row, 0)
                 painter.drawText(QRectF(4, rect.top(), 18, rect.height()), Qt.AlignmentFlag.AlignCenter, str(row + 1))
-
         if self.show_arrow:
-            rect = self._inner_rect()
-            y = rect.bottom() + 16
+            rect = self._inner_rect(); y = rect.bottom() + 16
             painter.setPen(QPen(QColor('#00A3FF'), 3))
             painter.drawLine(rect.left(), y, rect.right() - 24, y)
             painter.drawLine(rect.right() - 24, y, rect.right() - 38, y - 8)
             painter.drawLine(rect.right() - 24, y, rect.right() - 38, y + 8)
             painter.setPen(QColor('#8ccdf0'))
             painter.drawText(QRectF(rect.left(), y + 4, rect.width(), 18), Qt.AlignmentFlag.AlignCenter, 'FLOW')
-
         for parcel in self.parcels:
             points = self._scaled_points(parcel)
             if len(points) < 4:
@@ -447,6 +599,7 @@ class MainWindow(QMainWindow):
         self.system_timer.timeout.connect(self._refresh_system)
         self.system_timer.start()
 
+        self.matrix_canvas.on_cell_selected(self._update_matrix_detail)
         self._load_context_values()
         self._apply_language()
         self.context.start()
@@ -535,7 +688,9 @@ class MainWindow(QMainWindow):
 
     def _build_right_panel(self) -> QWidget:
         widget = QWidget(); layout = QVBoxLayout(widget); layout.setSpacing(12)
-        layout.addWidget(self._build_config_widget()); layout.addWidget(self._build_system_widget())
+        layout.addWidget(self._build_config_widget())
+        layout.addWidget(self._build_matrix_detail_widget())
+        layout.addWidget(self._build_system_widget())
         return widget
 
     def _build_query_and_logs_widget(self) -> QWidget:
@@ -576,14 +731,9 @@ class MainWindow(QMainWindow):
         self.show_index_checkbox.toggled.connect(self._matrix_option_changed)
         self.show_arrow_checkbox.toggled.connect(self._matrix_option_changed)
         self.language_combo.currentIndexChanged.connect(self._language_combo_changed)
-
         buttons = QGridLayout()
-        self.preview_btn = QPushButton()
-        self.write_btn = QPushButton(); self.write_btn.setProperty('variant', 'secondary')
-        self.simulate_btn = QPushButton(); self.simulate_btn.setProperty('variant', 'warn')
-        self.preview_btn.clicked.connect(self.preview_config)
-        self.write_btn.clicked.connect(self.write_config)
-        self.simulate_btn.clicked.connect(self.inject_sample_event)
+        self.preview_btn = QPushButton(); self.write_btn = QPushButton(); self.write_btn.setProperty('variant', 'secondary'); self.simulate_btn = QPushButton(); self.simulate_btn.setProperty('variant', 'warn')
+        self.preview_btn.clicked.connect(self.preview_config); self.write_btn.clicked.connect(self.write_config); self.simulate_btn.clicked.connect(self.inject_sample_event)
         buttons.addWidget(self.preview_btn, 0, 0); buttons.addWidget(self.write_btn, 0, 1); buttons.addWidget(self.simulate_btn, 1, 0, 1, 2)
         layout.addLayout(buttons)
         self.config_preview = QPlainTextEdit(); self.config_preview.setReadOnly(True)
@@ -616,6 +766,20 @@ class MainWindow(QMainWindow):
         self.realtime_table.verticalHeader().setVisible(False)
         layout.addWidget(self.realtime_table)
         return self.matrix_box
+
+    def _build_matrix_detail_widget(self) -> QWidget:
+        self.detail_box = QGroupBox()
+        layout = QFormLayout(self.detail_box)
+        self.detail_row_value = QLabel(); self.detail_col_value = QLabel(); self.detail_speed_value = QLabel(); self.detail_active_value = QLabel(); self.detail_parcel_value = QLabel(); self.detail_runtime_value = QLabel()
+        self.detail_row_label = QLabel(); self.detail_col_label = QLabel(); self.detail_speed_label = QLabel(); self.detail_active_label = QLabel(); self.detail_parcel_label = QLabel(); self.detail_runtime_label = QLabel()
+        self.detail_runtime_value.setWordWrap(True)
+        layout.addRow(self.detail_row_label, self.detail_row_value)
+        layout.addRow(self.detail_col_label, self.detail_col_value)
+        layout.addRow(self.detail_speed_label, self.detail_speed_value)
+        layout.addRow(self.detail_active_label, self.detail_active_value)
+        layout.addRow(self.detail_parcel_label, self.detail_parcel_value)
+        layout.addRow(self.detail_runtime_label, self.detail_runtime_value)
+        return self.detail_box
 
     def _build_system_widget(self) -> QWidget:
         self.system_box = QGroupBox()
@@ -690,6 +854,15 @@ class MainWindow(QMainWindow):
         self.simulate_btn.setText(self.trm('inject'))
         self.config_preview.setPlaceholderText(self.trm('config_preview_placeholder'))
         self.config_status.setText(self.trm('ready'))
+        self.detail_box.setTitle(self.trm('detail_panel'))
+        self.detail_row_label.setText(self.trm('detail_row'))
+        self.detail_col_label.setText(self.trm('detail_col'))
+        self.detail_speed_label.setText(self.trm('detail_speed'))
+        self.detail_active_label.setText(self.trm('detail_active'))
+        self.detail_parcel_label.setText(self.trm('detail_parcels'))
+        self.detail_runtime_label.setText(self.trm('detail_runtime'))
+        if not self.detail_runtime_value.text():
+            self.detail_runtime_value.setText(self.trm('detail_none'))
 
     def _load_context_values(self) -> None:
         client = self.context.client_settings
@@ -713,13 +886,47 @@ class MainWindow(QMainWindow):
         self._set_channel_status(self.unix_status, client.ingest.unix_socket.enabled)
         self._set_channel_status(self.zmq_status, client.ingest.zeromq.enabled)
         self.logs_editor.appendPlainText('Enabled channels: ' + ', '.join(self.context.channel_manager.enabled_channel_names()))
+        self.detail_runtime_value.setText(self.trm('detail_none'))
+
+    def _snapshot_for_dialog(self) -> dict[str, Any]:
+        c = self.context.client_settings
+        a = self.context.algorithm_settings
+        return {
+            'rows': self.rows_spin.value(),
+            'cols': self.cols_spin.value(),
+            'language': self.language,
+            'show_aux': self.show_aux_checkbox.isChecked(),
+            'show_coord': self.show_coord_checkbox.isChecked(),
+            'show_index': self.show_index_checkbox.isChecked(),
+            'show_arrow': self.show_arrow_checkbox.isChecked(),
+            'file_enabled': c.ingest.file.enabled,
+            'tcp_enabled': c.ingest.tcp.enabled,
+            'http_enabled': c.ingest.http.enabled,
+            'unix_enabled': c.ingest.unix_socket.enabled,
+            'zmq_enabled': c.ingest.zeromq.enabled,
+            'tcp_host': c.ingest.tcp.host,
+            'tcp_port': c.ingest.tcp.port,
+            'http_host': c.ingest.http.host,
+            'http_port': c.ingest.http.port,
+            'http_endpoint': c.ingest.http.endpoint,
+            'file_path': str(c.ingest.file.path),
+            'unix_path': c.ingest.unix_socket.path,
+            'zmq_endpoint': c.ingest.zeromq.endpoint,
+            'zmq_topic': c.ingest.zeromq.topic,
+            'monitor_enabled': c.monitor.enabled,
+            'monitor_interval': c.monitor.sample_interval_ms,
+            'algorithm_name': a.algorithm_name,
+            'log_level': c.log_level,
+            'threshold': getattr(a, 'threshold', 0.85),
+            'speed': getattr(a, 'speed', 1.0),
+        }
 
     def _set_channel_status(self, label: QLabel, enabled: bool) -> None:
         label.setText('ONLINE' if enabled else 'OFF')
         label.setProperty('role', 'status_ok' if enabled else 'status_off')
         label.style().unpolish(label); label.style().polish(label)
 
-    def _apply_dialog_values(self, dlg: SettingsDialog) -> None:
+    def _apply_dialog_values(self, dlg: ConfigCenterDialog) -> None:
         self.rows_spin.setValue(dlg.rows_spin.value())
         self.cols_spin.setValue(dlg.cols_spin.value())
         self.language = 'zh' if dlg.language_combo.currentIndex() == 0 else 'en'
@@ -728,16 +935,47 @@ class MainWindow(QMainWindow):
         self.show_coord_checkbox.setChecked(dlg.show_coord_checkbox.isChecked())
         self.show_index_checkbox.setChecked(dlg.show_index_checkbox.isChecked())
         self.show_arrow_checkbox.setChecked(dlg.show_arrow_checkbox.isChecked())
+        self.context.client_settings.ingest.file.enabled = dlg.file_enabled.isChecked()
+        self.context.client_settings.ingest.tcp.enabled = dlg.tcp_enabled.isChecked()
+        self.context.client_settings.ingest.http.enabled = dlg.http_enabled.isChecked()
+        self.context.client_settings.ingest.unix_socket.enabled = dlg.unix_enabled.isChecked()
+        self.context.client_settings.ingest.zeromq.enabled = dlg.zmq_enabled.isChecked()
+        self.context.client_settings.ingest.tcp.host = dlg.tcp_host.text().strip()
+        self.context.client_settings.ingest.tcp.port = dlg.tcp_port.value()
+        self.context.client_settings.ingest.http.host = dlg.http_host.text().strip()
+        self.context.client_settings.ingest.http.port = dlg.http_port.value()
+        self.context.client_settings.ingest.http.endpoint = dlg.http_endpoint.text().strip()
+        self.context.client_settings.ingest.file.path = dlg.file_path.text().strip()
+        self.context.client_settings.ingest.unix_socket.path = dlg.unix_path.text().strip()
+        self.context.client_settings.ingest.zeromq.endpoint = dlg.zmq_endpoint.text().strip()
+        self.context.client_settings.ingest.zeromq.topic = dlg.zmq_topic.text().strip()
+        self.context.client_settings.monitor.enabled = dlg.monitor_enabled.isChecked()
+        self.context.client_settings.monitor.sample_interval_ms = dlg.monitor_interval.value()
+        self.context.client_settings.log_level = dlg.log_level.currentText()
+        self.context.algorithm_settings.algorithm_name = dlg.algorithm_name.text().strip()
+        try:
+            setattr(self.context.algorithm_settings, 'threshold', float(dlg.threshold_edit.text().strip()))
+        except Exception:
+            pass
+        try:
+            setattr(self.context.algorithm_settings, 'speed', float(dlg.speed_edit.text().strip()))
+        except Exception:
+            pass
+        self._set_channel_status(self.file_status, self.context.client_settings.ingest.file.enabled)
+        self._set_channel_status(self.tcp_status, self.context.client_settings.ingest.tcp.enabled)
+        self._set_channel_status(self.http_status, self.context.client_settings.ingest.http.enabled)
+        self._set_channel_status(self.unix_status, self.context.client_settings.ingest.unix_socket.enabled)
+        self._set_channel_status(self.zmq_status, self.context.client_settings.ingest.zeromq.enabled)
         self._apply_language()
         self._matrix_shape_changed()
         self._matrix_option_changed()
 
     def open_settings_dialog(self) -> None:
-        dlg = SettingsDialog(self, self.rows_spin.value(), self.cols_spin.value(), self.language, self.show_aux_checkbox.isChecked(), self.show_coord_checkbox.isChecked(), self.show_index_checkbox.isChecked(), self.show_arrow_checkbox.isChecked())
+        dlg = ConfigCenterDialog(self, self._snapshot_for_dialog(), self.language)
         dlg.on_apply(self._apply_dialog_values)
         if dlg.exec():
             self._apply_dialog_values(dlg)
-            self.logs_editor.appendPlainText(f'Settings updated: {self.rows_spin.value()} x {self.cols_spin.value()}, lang={self.language}')
+            self.logs_editor.appendPlainText(f'Config center updated: {self.rows_spin.value()} x {self.cols_spin.value()}, lang={self.language}')
 
     def show_help(self) -> None:
         QMessageBox.information(self, self.trm('help'), self.trm('help_text'))
@@ -790,6 +1028,15 @@ class MainWindow(QMainWindow):
         }
         self.context.channel_manager.inject_sample(json.dumps(sample))
         self.logs_editor.appendPlainText('Injected sample single-piece realtime payload')
+
+    def _update_matrix_detail(self, selection: CellSelection) -> None:
+        self.detail_row_value.setText(str(selection.row + 1))
+        self.detail_col_value.setText(str(selection.col + 1))
+        self.detail_speed_value.setText(f'{selection.speed:.2f}')
+        self.detail_active_value.setText('YES' if selection.active else 'NO')
+        self.detail_parcel_value.setText(str(selection.parcel_count))
+        if self.last_record:
+            self.detail_runtime_value.setText(f'version={self.last_record.version}\nparcelNum={self.last_record.parcel_num}\nrealtimeParcels={len(self.last_record.parcels)}')
 
     def _handle_records(self, records: list[RealtimeRecord], metrics: ThroughputMetrics) -> None:
         if not records:
