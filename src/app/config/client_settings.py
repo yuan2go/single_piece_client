@@ -14,7 +14,7 @@ class FileChannelConfig(BaseModel):
     path: Path = Path('./runtime/realtime')
     file_pattern: str = '*.jsonl'
     recursive: bool = False
-    parser_type: str = 'jsonl_default'
+    parser_type: str = 'single_piece_realtime'
 
 
 class TcpChannelConfig(BaseModel):
@@ -22,7 +22,7 @@ class TcpChannelConfig(BaseModel):
     host: str = '127.0.0.1'
     port: int = 9101
     message_mode: Literal['line', 'raw'] = 'line'
-    parser_type: str = 'tcp_json_default'
+    parser_type: str = 'single_piece_realtime'
 
 
 class HttpChannelConfig(BaseModel):
@@ -30,14 +30,14 @@ class HttpChannelConfig(BaseModel):
     host: str = '127.0.0.1'
     port: int = 9102
     endpoint: str = '/events'
-    parser_type: str = 'http_json_default'
+    parser_type: str = 'single_piece_realtime'
 
 
 class UnixSocketChannelConfig(BaseModel):
     enabled: bool = False
     path: str = '/tmp/single_piece_algo.sock'
     socket_type: Literal['stream', 'datagram'] = 'stream'
-    parser_type: str = 'unix_json_default'
+    parser_type: str = 'single_piece_realtime'
 
 
 class ZeroMqChannelConfig(BaseModel):
@@ -45,7 +45,7 @@ class ZeroMqChannelConfig(BaseModel):
     mode: Literal['pull', 'sub'] = 'pull'
     endpoint: str = 'tcp://127.0.0.1:5555'
     topic: str = ''
-    parser_type: str = 'zmq_json_default'
+    parser_type: str = 'single_piece_realtime'
 
 
 class IngestSettings(BaseModel):
@@ -65,6 +65,14 @@ class MonitorSettings(BaseModel):
     monitor_disk: bool = True
 
 
+class UiSettings(BaseModel):
+    matrix_rows: int = 10
+    matrix_cols: int = 4
+    language: Literal['zh', 'en'] = 'zh'
+    show_coordinates: bool = False
+    show_auxiliary_info: bool = True
+
+
 class ClientSettings(BaseModel):
     app_name: str = 'single-piece-client'
     site_id: str = 'hz_demo'
@@ -74,3 +82,4 @@ class ClientSettings(BaseModel):
     log_level: str = 'INFO'
     ingest: IngestSettings = Field(default_factory=IngestSettings)
     monitor: MonitorSettings = Field(default_factory=MonitorSettings)
+    ui: UiSettings = Field(default_factory=UiSettings)

@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Callable
+from datetime import datetime
 
 from app.domain.models.raw_message import RawMessage
-from app.domain.models.realtime_record import RealtimeRecord
+from app.domain.models.realtime_record import Parcel, RealtimeRecord
 
 ParserFunc = Callable[[RawMessage], list[RealtimeRecord]]
 logger = logging.getLogger(__name__)
@@ -21,8 +22,8 @@ def parse_json_default(message: RawMessage) -> list[RealtimeRecord]:
     for row in rows:
         records.append(
             RealtimeRecord(
-                timestamp=row['timestamp'],
-                item_id=str(row['item_id']),
+                timestamp=row.get('timestamp', datetime.now().isoformat()),
+                item_id=str(row.get('item_id', 'unknown')),
                 device_id=str(row.get('device_id', 'unknown')),
                 result=str(row.get('result', 'unknown')),
                 process_time_ms=int(row.get('process_time_ms', 0)),
@@ -42,6 +43,29 @@ def parse_jsonl_default(message: RawMessage) -> list[RealtimeRecord]:
     return records
 
 
+def parse_single_piece_realtime(message: RawMessage) -> list[RealtimeRecord]:
+    payload = json.loads(message.payload)
+    parcels = [
+        Parcel(
+            speed=float(parcel.get('speed', 0.0)),
+            points=[[float(v) for v in point] for point in parcel.get('points', [])],
+        )
+        for parcel in payload.get('parcels', [])
+    ]
+    record = RealtimeRecord(
+        timestamp=datetime.now(),
+        item_id='single-piece-runtime',
+        device_id=str(payload.get('deviceId', 'single-piece-device')),
+        result='running',
+        version=str(payload.get('version', '1.0.0')),
+        parcel_num=int(payload.get('parcelNum', 0)),
+        realtime_efficiency=float(payload.get('efficiency', 0) or 0),
+        car_speeds=[float(v) for v in payload.get('car_speeds', [])],
+        parcels=parcels,
+    )
+    return [record]
+
+
 class ParserRegistry:
     """Resolve a parser function by parser_type."""
 
@@ -49,10 +73,11 @@ class ParserRegistry:
         self._parsers: dict[str, ParserFunc] = {
             'json_default': parse_json_default,
             'jsonl_default': parse_jsonl_default,
-            'tcp_json_default': parse_json_default,
-            'http_json_default': parse_json_default,
-            'unix_json_default': parse_json_default,
-            'zmq_json_default': parse_json_default,
+            'single_piece_realtime': parse_single_piece_realtime,
+            'tcp_json_default': parse_single_piece_realtime,
+            'http_json_default': parse_single_piece_realtime,
+            'unix_json_default': parse_single_piece_realtime,
+            'zmq_json_default': parse_single_piece_realtime,
         }
 
     def register(self, parser_type: str, parser: ParserFunc) -> None:

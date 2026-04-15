@@ -11,36 +11,36 @@
       "enabled": true,
       "watch_mode": "directory",
       "path": "./runtime/hz_demo/spc_01/realtime",
-      "file_pattern": "*.jsonl",
+      "file_pattern": "*.json",
       "recursive": false,
-      "parser_type": "jsonl_default"
+      "parser_type": "single_piece_realtime"
     },
     "tcp": {
       "enabled": true,
       "host": "127.0.0.1",
       "port": 9101,
       "message_mode": "line",
-      "parser_type": "tcp_json_default"
+      "parser_type": "single_piece_realtime"
     },
     "http": {
       "enabled": true,
       "host": "127.0.0.1",
       "port": 9102,
       "endpoint": "/events",
-      "parser_type": "http_json_default"
+      "parser_type": "single_piece_realtime"
     },
     "unix_socket": {
       "enabled": true,
       "path": "/tmp/single_piece_algo.sock",
       "socket_type": "stream",
-      "parser_type": "unix_json_default"
+      "parser_type": "single_piece_realtime"
     },
     "zeromq": {
       "enabled": true,
       "mode": "pull",
       "endpoint": "tcp://127.0.0.1:5555",
       "topic": "",
-      "parser_type": "zmq_json_default"
+      "parser_type": "single_piece_realtime"
     }
   },
   "monitor": {
@@ -49,5 +49,12 @@
     "monitor_cpu": true,
     "monitor_memory": true,
     "monitor_disk": true
+  },
+  "ui": {
+    "matrix_rows": 10,
+    "matrix_cols": 4,
+    "language": "zh",
+    "show_coordinates": false,
+    "show_auxiliary_info": true
   }
 }
