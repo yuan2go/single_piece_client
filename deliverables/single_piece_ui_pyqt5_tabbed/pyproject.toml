@@ -1,0 +1,17 @@
+[project]
+name = "single-piece-ui-pyqt5-tabbed"
+version = "0.1.0"
+description = "PyQt5 industrial UI demo for single-piece separation system"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "PyQt5>=5.15,<6",
+]
+
+[dependency-groups]
+dev = [
+  "debugpy>=1.8,<2",
+]
+
+[tool.uv]
+default-groups = ["dev"]
