@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Single Piece UI (uv)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/deliverables/single_piece_ui_pyqt5_tabbed/main.py",
+      "cwd": "${workspaceFolder}/deliverables/single_piece_ui_pyqt5_tabbed",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}
