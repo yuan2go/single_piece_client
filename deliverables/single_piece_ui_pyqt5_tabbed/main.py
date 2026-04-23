@@ -1,13 +1,20 @@
+from __future__ import annotations
+
 import sys
-from PyQt5.QtWidgets import QApplication
+from pathlib import Path
+
 from PyQt5.QtGui import QFont
+from PyQt5.QtWidgets import QApplication
 
 from app.main_window import MainWindow
 
 
+BASE_DIR = Path(__file__).resolve().parent
+STYLE_FILE = BASE_DIR / 'app' / 'styles.qss'
+
+
 def load_stylesheet() -> str:
-    with open('app/styles.qss', 'r', encoding='utf-8') as f:
-        return f.read()
+    return STYLE_FILE.read_text(encoding='utf-8')
 
 
 def main() -> None:
