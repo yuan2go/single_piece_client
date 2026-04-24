@@ -4,8 +4,12 @@ QWidget {
     font-size: 13px;
 }
 
-QMainWindow, QWidget {
+QMainWindow {
     background: #081321;
+}
+
+QLabel {
+    background: transparent;
 }
 
 QFrame#sidebar {
