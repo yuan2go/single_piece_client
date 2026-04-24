@@ -17,6 +17,12 @@ QFrame#sidebarLogo {
     border-bottom: 1px solid #173149;
 }
 
+QLabel#sidebarIconLogo {
+    color: #2d87ff;
+    font-size: 28px;
+    font-weight: 800;
+}
+
 QLabel#logoIcon {
     color: #2d87ff;
     font-size: 20px;
@@ -29,29 +35,41 @@ QLabel#logoText {
     font-weight: 700;
 }
 
+QPushButton {
+    outline: none;
+}
+
 NavButton, ConfigTabButton, QPushButton#navButton, QPushButton#navButtonActive {
-    text-align: left;
-    padding: 0 18px;
-    border: none;
+    text-align: center;
+    padding: 0 10px;
+    border: 1px solid transparent;
     color: #AFC3DB;
     background: transparent;
-    font-size: 15px;
-    font-weight: 500;
-    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 12px;
+    line-height: 1.5;
 }
 
 NavButton:hover, ConfigTabButton:hover {
     background: rgba(45, 135, 255, 0.08);
+    border: 1px solid rgba(45, 135, 255, 0.18);
 }
 
 NavButton[active="true"], ConfigTabButton[active="true"] {
-    background: #11345a;
+    background: linear-gradient(180deg, #10345d 0%, #0d2c4d 100%);
     color: #F4F8FF;
-    border-left: 3px solid #2d87ff;
+    border: 1px solid #2d87ff;
 }
 
 QFrame#sidebarFooter {
     border-top: 1px solid #173149;
+}
+
+QLabel#sidebarFooterMenu {
+    color: #C7D8EA;
+    font-size: 22px;
+    font-weight: 800;
 }
 
 QFrame#sideInfoCard, QFrame#configTipCard {
@@ -81,9 +99,11 @@ QFrame#topBar {
     border-bottom: 1px solid #173149;
 }
 
-QLabel#pageTopTitle, QLabel#configPageTitle {
+QLabel#appTopTitle,
+QLabel#pageTopTitle,
+QLabel#configPageTitle {
     color: #F5F8FD;
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 800;
 }
 
@@ -94,8 +114,15 @@ QLabel#warningNote {
 }
 
 QLabel#topTime {
-    color: #D9E6F7;
-    font-size: 13px;
+    color: #F3F8FF;
+    font-size: 15px;
+    font-weight: 700;
+    padding-left: 6px;
+}
+
+QLabel#topDate {
+    color: #8EA4BC;
+    font-size: 12px;
     font-weight: 600;
     padding-left: 6px;
 }
@@ -104,13 +131,14 @@ QLabel#headerChipGreen, QLabel#headerChipBlue, QLabel#headerChipRed, QLabel#head
     background: rgba(255,255,255,0.04);
     border: 1px solid #1d3550;
     border-radius: 16px;
-    padding: 6px 12px;
+    padding: 7px 12px;
     font-size: 12px;
+    font-weight: 700;
 }
 QLabel#headerChipGreen { color: #2dd36f; }
 QLabel#headerChipBlue { color: #9ddcff; }
 QLabel#headerChipRed { color: #ff6b6b; }
-QLabel#headerChipGray { color: #a5b9d3; }
+QLabel#headerChipGray { color: #c0d0e2; }
 
 QFrame#cardFrame,
 QFrame#overviewCard,
@@ -125,7 +153,11 @@ QFrame#legendRow,
 QFrame#configHeaderCard,
 QFrame#configDirectoryCard,
 QFrame#configBodyCard,
-QFrame#tabPageCard {
+QFrame#tabPageCard,
+QFrame#stageLabelPanel,
+QFrame#cacheLeftPanel,
+QFrame#cacheRightPanel,
+QFrame#cacheMatrixFrame {
     background: #0C1C2D;
     border: 1px solid #1D3852;
     border-radius: 14px;
@@ -222,7 +254,13 @@ QLabel#tabPageTitle, QLabel#blockTitle {
     font-weight: 800;
 }
 
-QLabel#tabPageHint, QLabel#rightSectionTitle {
+QLabel#rightSectionTitle {
+    color: #2D87FF;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+QLabel#tabPageHint {
     color: #8DB8FF;
     font-size: 12px;
     font-weight: 600;
@@ -237,7 +275,8 @@ QLabel#metricTitle,
 QLabel#cacheLeftTitle,
 QLabel#legendText,
 QLabel#gridHeaderLabel,
-QLabel#tableFooterText {
+QLabel#tableFooterText,
+QLabel#cacheCountTitle {
     color: #B8C8DA;
     font-size: 13px;
 }
@@ -248,7 +287,7 @@ QLabel#monitorMetaOk, QLabel#deviceInfoValueGreen, QLabel#cacheCountValue {
     font-weight: 800;
 }
 
-QLabel#deviceInfoValue, QLabel#statValue, QLabel#metricUnit, QLabel#stageSpeed, QLabel#stageName, QLabel#cacheCountUnit, QLabel#cacheCountTitle {
+QLabel#deviceInfoValue, QLabel#statValue, QLabel#metricUnit, QLabel#stageSpeed, QLabel#stageName, QLabel#cacheCountUnit {
     color: #E9F2FB;
     font-size: 13px;
 }
@@ -293,19 +332,23 @@ QLabel#controlBtnRed {
     color: #FFD6D3;
 }
 
-QFrame#processStage {
+QFrame#processStage,
+QFrame#stageLabelPanel,
+QFrame#cacheLeftPanel,
+QFrame#cacheRightPanel {
     border-radius: 12px;
 }
 
 QLabel#stageStatusDot {
     font-size: 16px;
+    font-weight: 800;
 }
 
 QFrame#beltBox {
     background: #091523;
     border: 1px dashed #35506B;
     border-radius: 8px;
-    min-height: 38px;
+    min-height: 40px;
 }
 
 QLabel#parcelBox {
@@ -321,15 +364,32 @@ QLabel#flowArrow {
     padding: 0;
 }
 
+QFrame#cacheGridCard {
+    min-height: 270px;
+}
+
+QFrame#cacheLeftPanel,
+QFrame#cacheRightPanel {
+    background: #102238;
+    border: 1px solid #2a4663;
+}
+
+QFrame#cacheMatrixFrame {
+    background: transparent;
+    border: none;
+}
+
 QLabel#gridCell, QLabel#gridCellActiveGreen, QLabel#gridCellActiveYellow {
-    min-width: 24px;
-    max-width: 24px;
-    min-height: 24px;
-    max-height: 24px;
+    min-width: 26px;
+    max-width: 26px;
+    min-height: 26px;
+    max-height: 26px;
     border-radius: 6px;
     background: #0b1624;
     border: 1px solid #274768;
     qproperty-alignment: AlignCenter;
+    font-size: 12px;
+    font-weight: 800;
 }
 QLabel#gridCell { color: #6D8199; }
 QLabel#gridCellActiveGreen { color: #ffffff; background: #1f8f4a; border: 1px solid #51d26d; }
