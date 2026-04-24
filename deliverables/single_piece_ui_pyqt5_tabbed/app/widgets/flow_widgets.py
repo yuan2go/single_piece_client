@@ -3,12 +3,27 @@ from PyQt5.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QVBoxLayou
 
 
 class ProcessStage(QFrame):
-    def __init__(self, name: str, speed: str, parcel_color: str = '#D8A24B', status_color: str = '#39d353', icon_text: str = '▣', parent=None):
+    def __init__(
+        self,
+        name: str,
+        speed: str,
+        parcel_color: str = '#D8A24B',
+        status_color: str = '#39d353',
+        icon_text: str = '▣',
+        parent=None,
+    ):
         super().__init__(parent)
         self.setObjectName('processStage')
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(12)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+
+        label_panel = QFrame()
+        label_panel.setObjectName('stageLabelPanel')
+        label_panel.setFixedWidth(150)
+        label_layout = QHBoxLayout(label_panel)
+        label_layout.setContentsMargins(12, 10, 12, 10)
+        label_layout.setSpacing(8)
 
         dot = QLabel('●')
         dot.setObjectName('stageStatusDot')
@@ -16,29 +31,33 @@ class ProcessStage(QFrame):
 
         name_label = QLabel(name)
         name_label.setObjectName('stageName')
-        name_label.setFixedWidth(92)
+
+        label_layout.addWidget(dot)
+        label_layout.addWidget(name_label)
+        label_layout.addStretch()
 
         belt = QFrame()
         belt.setObjectName('beltBox')
         belt_layout = QHBoxLayout(belt)
-        belt_layout.setContentsMargins(14, 6, 14, 6)
+        belt_layout.setContentsMargins(18, 7, 18, 7)
         belt_layout.setSpacing(0)
         belt_layout.addStretch()
 
-        parcel = QLabel(icon_text)
-        parcel.setObjectName('parcelBox')
-        parcel.setStyleSheet(f'background:{parcel_color}; color:#111;')
-        parcel.setAlignment(Qt.AlignCenter)
-        parcel.setFixedSize(28, 22)
-        belt_layout.addWidget(parcel)
+        if icon_text:
+            parcel = QLabel(icon_text)
+            parcel.setObjectName('parcelBox')
+            parcel.setStyleSheet(f'background:{parcel_color}; color:#111;')
+            parcel.setAlignment(Qt.AlignCenter)
+            parcel.setFixedSize(30, 24)
+            belt_layout.addWidget(parcel)
         belt_layout.addStretch()
 
         speed_label = QLabel(speed)
         speed_label.setObjectName('stageSpeed')
-        speed_label.setFixedWidth(64)
+        speed_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        speed_label.setFixedWidth(70)
 
-        layout.addWidget(dot)
-        layout.addWidget(name_label)
+        layout.addWidget(label_panel)
         layout.addWidget(belt, 1)
         layout.addWidget(speed_label)
 
@@ -48,39 +67,53 @@ class ArrowDown(QLabel):
         super().__init__('↓', parent)
         self.setObjectName('flowArrow')
         self.setAlignment(Qt.AlignCenter)
+        self.setFixedHeight(22)
 
 
 class CacheGrid(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName('cacheGridCard')
+        self.setMinimumHeight(270)
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(14)
 
-        left_title = QLabel('缓存存格\n阵列\n(居中区)')
+        left_panel = QFrame()
+        left_panel.setObjectName('cacheLeftPanel')
+        left_panel.setFixedWidth(98)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(10, 10, 10, 10)
+        left_layout.setSpacing(0)
+        left_title = QLabel('缓存存格\n阵列\n（居中区）')
         left_title.setObjectName('cacheLeftTitle')
         left_title.setAlignment(Qt.AlignCenter)
-        left_title.setFixedWidth(76)
-        layout.addWidget(left_title)
+        left_layout.addStretch()
+        left_layout.addWidget(left_title)
+        left_layout.addStretch()
+        layout.addWidget(left_panel)
 
         center = QWidget()
         center_layout = QVBoxLayout(center)
         center_layout.setContentsMargins(0, 0, 0, 0)
-        center_layout.setSpacing(6)
+        center_layout.setSpacing(8)
 
         header = QHBoxLayout()
         header.setSpacing(6)
-        header.addSpacing(20)
+        header.addSpacing(24)
         for col in range(1, 13):
             lb = QLabel(f'{col:02d}')
             lb.setObjectName('gridHeaderLabel')
-            lb.setFixedWidth(24)
+            lb.setFixedWidth(26)
             lb.setAlignment(Qt.AlignCenter)
             header.addWidget(lb)
+        header.addStretch()
         center_layout.addLayout(header)
 
-        grid = QGridLayout()
+        matrix = QFrame()
+        matrix.setObjectName('cacheMatrixFrame')
+        grid = QGridLayout(matrix)
+        grid.setContentsMargins(0, 0, 0, 0)
         grid.setHorizontalSpacing(6)
         grid.setVerticalSpacing(6)
 
@@ -88,7 +121,7 @@ class CacheGrid(QFrame):
             row_lb = QLabel(f'{row:02d}')
             row_lb.setObjectName('gridHeaderLabel')
             row_lb.setAlignment(Qt.AlignCenter)
-            row_lb.setFixedWidth(20)
+            row_lb.setFixedWidth(22)
             grid.addWidget(row_lb, row - 1, 0)
             for col in range(1, 13):
                 cell = QLabel('●')
@@ -101,11 +134,16 @@ class CacheGrid(QFrame):
                     cell.setText('▣')
                     cell.setObjectName('gridCellActiveYellow')
                 grid.addWidget(cell, row - 1, col)
-        center_layout.addLayout(grid)
+        center_layout.addWidget(matrix)
         layout.addWidget(center, 1)
 
-        right_wrap = QVBoxLayout()
-        right_wrap.setSpacing(6)
+        right_panel = QFrame()
+        right_panel.setObjectName('cacheRightPanel')
+        right_panel.setFixedWidth(70)
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setContentsMargins(4, 10, 4, 10)
+        right_layout.setSpacing(4)
+        right_layout.addStretch()
         title = QLabel('在库\n数量')
         title.setObjectName('cacheCountTitle')
         title.setAlignment(Qt.AlignCenter)
@@ -115,12 +153,11 @@ class CacheGrid(QFrame):
         unit = QLabel('件')
         unit.setObjectName('cacheCountUnit')
         unit.setAlignment(Qt.AlignCenter)
-        right_wrap.addStretch()
-        right_wrap.addWidget(title)
-        right_wrap.addWidget(value)
-        right_wrap.addWidget(unit)
-        right_wrap.addStretch()
-        layout.addLayout(right_wrap)
+        right_layout.addWidget(title)
+        right_layout.addWidget(value)
+        right_layout.addWidget(unit)
+        right_layout.addStretch()
+        layout.addWidget(right_panel)
 
 
 class LegendRow(QFrame):
@@ -129,17 +166,17 @@ class LegendRow(QFrame):
         self.setObjectName('legendRow')
         layout = QHBoxLayout(self)
         layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(18)
+        layout.setSpacing(16)
         items = [
-            ('■', '设备运行', '#39d353'),
-            ('■', '设备待机', '#3398ff'),
-            ('■', '告警', '#ff5f57'),
-            ('■', '光电遮挡', '#f5b83d'),
-            ('■', '离线', '#8fa3b9'),
+            ('●', '设备运行', '#39d353'),
+            ('●', '设备待机', '#3398ff'),
+            ('●', '告警', '#ff5f57'),
+            ('●', '光电遮挡', '#f5b83d'),
+            ('●', '离线', '#8fa3b9'),
         ]
         for icon, text, color in items:
             icon_lb = QLabel(icon)
-            icon_lb.setStyleSheet(f'color:{color}; font-size:16px;')
+            icon_lb.setStyleSheet(f'color:{color}; font-size:18px; font-weight:800;')
             text_lb = QLabel(text)
             text_lb.setObjectName('legendText')
             wrap = QHBoxLayout()
