@@ -22,12 +22,16 @@ class MonitorPage(QWidget):
 
     def _build_ui(self):
         root = QHBoxLayout(self)
-        root.setContentsMargins(18, 18, 18, 18)
-        root.setSpacing(16)
+        root.setContentsMargins(10, 12, 10, 12)
+        root.setSpacing(12)
 
-        root.addWidget(self._build_left_panel(), 4)
-        root.addWidget(self._build_center_panel(), 4)
-        root.addWidget(self._build_right_panel(), 4)
+        left = self._build_left_panel()
+        center = self._build_center_panel()
+        right = self._build_right_panel()
+
+        root.addWidget(left, 11)
+        root.addWidget(center, 12)
+        root.addWidget(right, 11)
 
     def set_time(self, text: str):
         self.time_value = text
@@ -35,7 +39,8 @@ class MonitorPage(QWidget):
 
     def _build_left_panel(self) -> QWidget:
         card, layout = block_card('实时跟踪画面（方向：自上而下）')
-        layout.setSpacing(10)
+        card.setMinimumWidth(560)
+        layout.setSpacing(8)
 
         layout.addWidget(ProcessStage('供包皮带线', '0.62 m/s', '#D8A24B'))
         layout.addWidget(ArrowDown())
@@ -45,7 +50,7 @@ class MonitorPage(QWidget):
         layout.addWidget(ArrowDown())
         layout.addWidget(ProcessStage('缓存2皮带线', '0.58 m/s', '#59d64f'))
         layout.addWidget(ArrowDown())
-        layout.addWidget(CacheGrid())
+        layout.addWidget(CacheGrid(), 1)
         layout.addWidget(ArrowDown())
         layout.addWidget(ProcessStage('居中机', '0.50 m/s', '#59d64f'))
         layout.addWidget(ArrowDown())
@@ -58,9 +63,10 @@ class MonitorPage(QWidget):
 
     def _build_center_panel(self) -> QWidget:
         wrap = QWidget()
+        wrap.setMinimumWidth(540)
         layout = QVBoxLayout(wrap)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(14)
+        layout.setSpacing(12)
 
         status_card = QFrame()
         status_card.setObjectName('monitorBlock')
@@ -70,10 +76,11 @@ class MonitorPage(QWidget):
 
         warn = QLabel('⚠  线上生产环境，请谨慎执行启停、清空等操作！')
         warn.setObjectName('warningBanner')
+        warn.setAlignment(Qt.AlignCenter)
         s_layout.addWidget(warn)
 
         row = QHBoxLayout()
-        row.setSpacing(24)
+        row.setSpacing(22)
         t1 = QLabel('当前状态：')
         t1.setObjectName('monitorMetaTitle')
         v1 = QLabel('离线')
@@ -102,22 +109,23 @@ class MonitorPage(QWidget):
             btn = QLabel(text)
             btn.setObjectName(object_name)
             btn.setAlignment(Qt.AlignCenter)
-            btn.setMinimumHeight(48)
+            btn.setMinimumHeight(52)
             button_row.addWidget(btn)
         layout.addLayout(button_row)
 
         kpi_row = QHBoxLayout()
-        kpi_row.setSpacing(14)
+        kpi_row.setSpacing(12)
         kpi_row.addWidget(metric_tile('包裹总数', '0', '件'))
         kpi_row.addWidget(metric_tile('小时效率', '0', '件/小时'))
         kpi_row.addWidget(metric_tile('稼动率（OEE）', '0.0', '%', 'monitorMetricValueOrange'))
         layout.addLayout(kpi_row)
 
         info_card, info_layout = block_card('设备信息')
+        info_card.setMinimumHeight(360)
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
-        grid.setVerticalSpacing(10)
-        left = [
+        grid.setVerticalSpacing(11)
+        items = [
             ('场地：', '场地名称1'),
             ('CPU利用率：', '30.7 %'),
             ('内存利用率：', '95.5 %'),
@@ -128,7 +136,7 @@ class MonitorPage(QWidget):
             ('易滑件拉包间距（mm）：', '1000.0'),
             ('电柜状态：', '离线'),
         ]
-        for i, (k, v) in enumerate(left):
+        for i, (k, v) in enumerate(items):
             key = QLabel(k)
             key.setObjectName('deviceInfoKey')
             val = QLabel(v)
@@ -136,7 +144,7 @@ class MonitorPage(QWidget):
             grid.addWidget(key, i, 0)
             grid.addWidget(val, i, 1)
         info_layout.addLayout(grid)
-        layout.addWidget(info_card)
+        layout.addWidget(info_card, 1)
         return wrap
 
     def _metric_box(self, title: str, items: list[tuple[str, str]]) -> QWidget:
@@ -165,12 +173,13 @@ class MonitorPage(QWidget):
 
     def _build_right_panel(self) -> QWidget:
         wrap = QWidget()
+        wrap.setMinimumWidth(530)
         layout = QVBoxLayout(wrap)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(14)
+        layout.setSpacing(12)
 
         title_card, title_layout = block_card('分离数据（左）')
-        title_layout.setSpacing(14)
+        title_layout.setSpacing(12)
         title_layout.addWidget(self._metric_box('主线数据', [
             ('包裹总数', '0 件'), ('平均包裹长度', '0 mm'),
             ('最小包裹长度', '0 mm'), ('最小包裹数量', '0 件/小时'),
@@ -208,7 +217,7 @@ class MonitorPage(QWidget):
         table.setItem(0, 4, QTableWidgetItem('通讯超时'))
         table.setItem(0, 5, QTableWidgetItem('2026-04-23 16:51:32'))
         table.horizontalHeader().setStretchLastSection(True)
-        table.horizontalHeader().setDefaultSectionSize(90)
+        table.horizontalHeader().setDefaultSectionSize(84)
         table.setFixedHeight(112)
         t_layout.addWidget(table)
 
@@ -217,5 +226,5 @@ class MonitorPage(QWidget):
         t_layout.addWidget(footer)
 
         title_layout.addWidget(table_card)
-        layout.addWidget(title_card)
+        layout.addWidget(title_card, 1)
         return wrap
