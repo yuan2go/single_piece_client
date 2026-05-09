@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import random
+from datetime import datetime
 from typing import Any
 
-from PySide6.QtCore import QObject, Property, Signal, Slot
+from PySide6.QtCore import QObject, Property, QTimer, Signal, Slot
 
 from single_piece_qml_client.core.app_config import AppConfig
 from single_piece_qml_client.domain.catalogs import equipment_catalog, initial_stats, initial_trend, parameter_catalog, setting_catalog
@@ -39,6 +41,12 @@ class ApplicationController(QObject):
         self._log_service.seed_if_empty()
         self.refreshLogs()
         self._selected_log = self.logs.get(0)
+        self._clock_timer = QTimer(self)
+        self._clock_timer.timeout.connect(self._tick)
+        self._clock_timer.start(1000)
+        self._data_timer = QTimer(self)
+        self._data_timer.timeout.connect(self._simulate)
+        self._data_timer.start(3000)
 
     @Property(int, notify=currentPageChanged)
     def currentPage(self) -> int: return self._current_page
@@ -71,8 +79,9 @@ class ApplicationController(QObject):
 
     @Slot(int)
     def setPage(self, page: int) -> None:
-        self._current_page = page
-        self.currentPageChanged.emit()
+        if self._current_page != page:
+            self._current_page = page
+            self.currentPageChanged.emit()
 
     @Slot()
     def startDevice(self) -> None:
@@ -120,3 +129,27 @@ class ApplicationController(QObject):
         self.selectedLogChanged.emit()
         self._toast = detail
         self.toastChanged.emit()
+        QTimer.singleShot(2400, self._clear_toast)
+
+    def _clear_toast(self) -> None:
+        self._toast = ""
+        self.toastChanged.emit()
+
+    def _tick(self) -> None:
+        self._current_time = now_text()
+        self.currentTimeChanged.emit()
+
+    def _simulate(self) -> None:
+        if self._run_state != "运行中" or not self._config.demo_mode:
+            return
+        self._stats["total"] += random.randint(3, 8)
+        self._stats["current"] = max(40, min(130, self._stats["current"] + random.randint(-4, 5)))
+        self._stats["throughput"] = max(900, min(1350, self._stats["throughput"] + random.randint(-30, 36)))
+        self._stats["beat"] = round(max(0.52, min(0.82, self._stats["beat"] + random.uniform(-0.02, 0.02))), 2)
+        self.statsChanged.emit()
+        point = self._trend[-1].copy()
+        point["label"] = datetime.now().strftime("%H:%M")
+        for key, low, high in (("main", 1000, 1450), ("supply", 540, 820), ("manual", 160, 420), ("cycle", 60, 190)):
+            point[key] = max(low, min(high, point[key] + random.randint(-40, 45)))
+        self._trend = self._trend[1:] + [point]
+        self.trendChanged.emit()
