@@ -3,6 +3,9 @@ import QtQuick.Layouts
 
 Rectangle {
     id: root
+    property int currentIndex: 0
+    signal selected(int index)
+
     color: "#07101A"
     border.color: "#173149"
     border.width: 1
@@ -15,12 +18,12 @@ Rectangle {
 
         Repeater {
             model: [
-                {"label": "实时监控", "active": true, "badge": ""},
-                {"label": "报警中心", "active": false, "badge": "2"},
-                {"label": "设备诊断", "active": false, "badge": ""},
-                {"label": "参数配置", "active": false, "badge": ""},
-                {"label": "日志记录", "active": false, "badge": ""},
-                {"label": "系统设置", "active": false, "badge": ""}
+                {"label": "实时监控", "badge": ""},
+                {"label": "报警中心", "badge": "2"},
+                {"label": "设备诊断", "badge": ""},
+                {"label": "参数配置", "badge": ""},
+                {"label": "日志记录", "badge": ""},
+                {"label": "系统设置", "badge": ""}
             ]
 
             delegate: Rectangle {
@@ -29,16 +32,17 @@ Rectangle {
                 Layout.rightMargin: 10
                 height: 48
                 radius: 8
-                color: modelData.active ? "#173454" : "transparent"
-                border.color: modelData.active ? "#2F80ED" : "transparent"
+                property bool active: index === root.currentIndex
+                color: active ? "#173454" : "transparent"
+                border.color: active ? "#2F80ED" : "transparent"
                 border.width: 1
 
                 Text {
                     anchors.centerIn: parent
                     text: modelData.label
-                    color: modelData.active ? "#E5EDF5" : "#9BA8B8"
+                    color: parent.active ? "#E5EDF5" : "#9BA8B8"
                     font.pixelSize: 14
-                    font.weight: modelData.active ? Font.DemiBold : Font.Normal
+                    font.weight: parent.active ? Font.DemiBold : Font.Normal
                 }
 
                 Rectangle {
@@ -58,6 +62,12 @@ Rectangle {
                         font.pixelSize: 11
                         font.weight: Font.Bold
                     }
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.selected(index)
                 }
             }
         }
