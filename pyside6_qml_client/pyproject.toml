@@ -15,7 +15,8 @@ dev = [
 ]
 
 [project.scripts]
-single-piece-qml-client = "single_piece_qml_client.main:main"
+single-piece-qml-client = "single_piece_qml_client.app:run"
+single-piece-qml-client-dev = "single_piece_qml_client.main:main"
 
 [tool.uv]
 package = true
