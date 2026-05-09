@@ -1,11 +1,17 @@
 [project]
 name = "single-piece-qml-client"
-version = "0.1.0"
-description = "Industrial PySide6 + QML desktop client prototype for single-piece separation control system."
+version = "0.2.0"
+description = "Industrial PySide6 + QML desktop client for single-piece separation control system."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "PySide6>=6.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
 ]
 
 [project.scripts]
@@ -19,7 +25,14 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "N802", # Qt/PySide API names use camelCase.
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
 
 [build-system]
 requires = ["hatchling"]
