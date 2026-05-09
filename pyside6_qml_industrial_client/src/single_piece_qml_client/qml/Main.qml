@@ -15,6 +15,8 @@ ApplicationWindow {
     title: "单件分离控制系统"
     color: "#0B1623"
 
+    property int currentPage: 0
+
     font.family: "Noto Sans CJK SC"
     font.pixelSize: 13
 
@@ -36,18 +38,39 @@ ApplicationWindow {
             SideNavigation {
                 Layout.preferredWidth: 110
                 Layout.fillHeight: true
+                currentIndex: root.currentPage
+                onSelected: function(index) { root.currentPage = index }
             }
 
-            RealtimeMonitorPage {
+            StackLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                runtimeData: backend.runtime
-                beltCells: backend.beltCells
-                packages: backend.packages
+                currentIndex: root.currentPage
+
+                RealtimeMonitorPage {
+                    runtimeData: backend.runtime
+                    beltCells: backend.beltCells
+                    packages: backend.packages
+                }
+
+                AlarmCenterPage {
+                    alarms: backend.alarms
+                }
+
+                DeviceDiagnosisPage {}
+
+                ParameterConfigPage {}
+
+                LogRecordPage {
+                    events: backend.events
+                }
+
+                SystemSettingsPage {}
             }
 
             RightStatusPanel {
-                Layout.preferredWidth: 360
+                visible: root.currentPage === 0
+                Layout.preferredWidth: root.currentPage === 0 ? 360 : 0
                 Layout.fillHeight: true
                 runtimeData: backend.runtime
                 kpis: backend.kpis
