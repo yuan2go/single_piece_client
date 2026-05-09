@@ -7,7 +7,13 @@ from typing import Any
 from PySide6.QtCore import QObject, Property, QTimer, Signal, Slot
 
 from single_piece_qml_client.core.app_config import AppConfig
-from single_piece_qml_client.domain.catalogs import equipment_catalog, initial_stats, initial_trend, parameter_catalog, setting_catalog
+from single_piece_qml_client.domain.catalogs import (
+    equipment_catalog,
+    initial_stats,
+    initial_trend,
+    parameter_catalog,
+    setting_catalog,
+)
 from single_piece_qml_client.models import RoleListModel
 from single_piece_qml_client.services.log_service import LogService, now_text
 from single_piece_qml_client.services.state_service import StateService, apply_saved_values
@@ -22,7 +28,12 @@ class ApplicationController(QObject):
     trendChanged = Signal()
     toastChanged = Signal()
 
-    def __init__(self, config: AppConfig, log_service: LogService, state_service: StateService) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        log_service: LogService,
+        state_service: StateService,
+    ) -> None:
         super().__init__()
         self._config = config
         self._log_service = log_service
@@ -34,48 +45,84 @@ class ApplicationController(QObject):
         self._stats = initial_stats()
         self._trend = initial_trend()
         self._selected_log: dict[str, Any] = {}
-        self.equipment = RoleListModel(["name", "icon", "speed", "state", "count"], equipment_catalog())
-        self.params = RoleListModel(["group", "key", "name", "value", "unit"], apply_saved_values(parameter_catalog(), state_service.load_prefix("param")))
-        self.settings = RoleListModel(["group", "key", "name", "value", "unit"], apply_saved_values(setting_catalog(), state_service.load_prefix("setting")))
-        self.logs = RoleListModel(["time", "level", "type", "module", "content", "operator", "result", "trace", "detail"], [])
+
+        self.equipment = RoleListModel(
+            ["name", "icon", "speed", "state", "count"],
+            equipment_catalog(),
+        )
+        self.params = RoleListModel(
+            ["group", "key", "name", "value", "unit"],
+            apply_saved_values(parameter_catalog(), state_service.load_prefix("param")),
+        )
+        self.settings = RoleListModel(
+            ["group", "key", "name", "value", "unit"],
+            apply_saved_values(setting_catalog(), state_service.load_prefix("setting")),
+        )
+        self.logs = RoleListModel(
+            ["time", "level", "type", "module", "content", "operator", "result", "trace", "detail"],
+            [],
+        )
+
         self._log_service.seed_if_empty()
         self.refreshLogs()
         self._selected_log = self.logs.get(0)
-        self._clock_timer = QTimer(self)
-        self._clock_timer.timeout.connect(self._tick)
-        self._clock_timer.start(1000)
-        self._data_timer = QTimer(self)
-        self._data_timer.timeout.connect(self._simulate)
-        self._data_timer.start(3000)
+        self._start_timers()
 
     @Property(int, notify=currentPageChanged)
-    def currentPage(self) -> int: return self._current_page
+    def currentPage(self) -> int:
+        return self._current_page
+
     @Property(str, notify=currentTimeChanged)
-    def currentTime(self) -> str: return self._current_time
+    def currentTime(self) -> str:
+        return self._current_time
+
     @Property(str, constant=True)
-    def systemName(self) -> str: return self._config.ui.title
+    def systemName(self) -> str:
+        return self._config.ui.title
+
     @Property(str, constant=True)
-    def siteName(self) -> str: return self._config.ui.site_name
+    def siteName(self) -> str:
+        return self._config.ui.site_name
+
     @Property(str, constant=True)
-    def deviceName(self) -> str: return self._config.ui.device_name
+    def deviceName(self) -> str:
+        return self._config.ui.device_name
+
     @Property(str, notify=runStateChanged)
-    def runState(self) -> str: return self._run_state
+    def runState(self) -> str:
+        return self._run_state
+
     @Property(str, notify=toastChanged)
-    def toast(self) -> str: return self._toast
+    def toast(self) -> str:
+        return self._toast
+
     @Property("QVariantMap", notify=statsChanged)
-    def stats(self) -> dict[str, Any]: return self._stats
+    def stats(self) -> dict[str, Any]:
+        return self._stats
+
     @Property("QVariantList", notify=trendChanged)
-    def trend(self) -> list[dict[str, Any]]: return self._trend
+    def trend(self) -> list[dict[str, Any]]:
+        return self._trend
+
     @Property("QVariantMap", notify=selectedLogChanged)
-    def selectedLog(self) -> dict[str, Any]: return self._selected_log
+    def selectedLog(self) -> dict[str, Any]:
+        return self._selected_log
+
     @Property(QObject, constant=True)
-    def equipmentModel(self) -> RoleListModel: return self.equipment
+    def equipmentModel(self) -> RoleListModel:
+        return self.equipment
+
     @Property(QObject, constant=True)
-    def paramModel(self) -> RoleListModel: return self.params
+    def paramModel(self) -> RoleListModel:
+        return self.params
+
     @Property(QObject, constant=True)
-    def settingModel(self) -> RoleListModel: return self.settings
+    def settingModel(self) -> RoleListModel:
+        return self.settings
+
     @Property(QObject, constant=True)
-    def logModel(self) -> RoleListModel: return self.logs
+    def logModel(self) -> RoleListModel:
+        return self.logs
 
     @Slot(int)
     def setPage(self, page: int) -> None:
@@ -87,13 +134,13 @@ class ApplicationController(QObject):
     def startDevice(self) -> None:
         self._run_state = "运行中"
         self.runStateChanged.emit()
-        self._add_log("启动设备", "设备启动命令已发送。")
+        self._add_operation_log("启动设备", "设备启动命令已发送。")
 
     @Slot()
     def stopDevice(self) -> None:
         self._run_state = "已停止"
         self.runStateChanged.emit()
-        self._add_log("停止设备", "设备停止命令已发送。")
+        self._add_operation_log("停止设备", "设备停止命令已发送。")
 
     @Slot()
     def refreshLogs(self) -> None:
@@ -115,15 +162,31 @@ class ApplicationController(QObject):
     @Slot()
     def saveParams(self) -> None:
         self._state_service.save_prefixed_rows("param", self.params.rows())
-        self._add_log("保存参数", "参数已保存到 SQLite。")
+        self._add_operation_log("保存参数", "参数已保存到 SQLite。")
 
     @Slot()
     def saveSettings(self) -> None:
         self._state_service.save_prefixed_rows("setting", self.settings.rows())
-        self._add_log("保存系统设置", "系统设置已保存到 SQLite。")
+        self._add_operation_log("保存系统设置", "系统设置已保存到 SQLite。")
 
-    def _add_log(self, content: str, detail: str) -> None:
-        row = self._log_service.append("信息", "操作日志", "系统管理", content, "admin", "成功", detail)
+    def _start_timers(self) -> None:
+        self._clock_timer = QTimer(self)
+        self._clock_timer.timeout.connect(self._tick)
+        self._clock_timer.start(1000)
+        self._data_timer = QTimer(self)
+        self._data_timer.timeout.connect(self._simulate)
+        self._data_timer.start(3000)
+
+    def _add_operation_log(self, content: str, detail: str) -> None:
+        row = self._log_service.append(
+            "信息",
+            "操作日志",
+            "系统管理",
+            content,
+            "admin",
+            "成功",
+            detail,
+        )
         self.logs.prepend(row, self._config.storage.max_ui_log_rows)
         self._selected_log = row
         self.selectedLogChanged.emit()
@@ -144,12 +207,27 @@ class ApplicationController(QObject):
             return
         self._stats["total"] += random.randint(3, 8)
         self._stats["current"] = max(40, min(130, self._stats["current"] + random.randint(-4, 5)))
-        self._stats["throughput"] = max(900, min(1350, self._stats["throughput"] + random.randint(-30, 36)))
-        self._stats["beat"] = round(max(0.52, min(0.82, self._stats["beat"] + random.uniform(-0.02, 0.02))), 2)
+        self._stats["throughput"] = max(
+            900,
+            min(1350, self._stats["throughput"] + random.randint(-30, 36)),
+        )
+        self._stats["beat"] = round(
+            max(0.52, min(0.82, self._stats["beat"] + random.uniform(-0.02, 0.02))),
+            2,
+        )
         self.statsChanged.emit()
+        self._append_trend_point()
+
+    def _append_trend_point(self) -> None:
         point = self._trend[-1].copy()
         point["label"] = datetime.now().strftime("%H:%M")
-        for key, low, high in (("main", 1000, 1450), ("supply", 540, 820), ("manual", 160, 420), ("cycle", 60, 190)):
+        bounds = (
+            ("main", 1000, 1450),
+            ("supply", 540, 820),
+            ("manual", 160, 420),
+            ("cycle", 60, 190),
+        )
+        for key, low, high in bounds:
             point[key] = max(low, min(high, point[key] + random.randint(-40, 45)))
         self._trend = self._trend[1:] + [point]
         self.trendChanged.emit()
