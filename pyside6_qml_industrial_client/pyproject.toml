@@ -12,6 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "pytest>=8.3,<9",
   "ruff>=0.8,<1",
 ]
 
@@ -27,6 +28,10 @@ packages = ["src/single_piece_qml_client"]
 
 [tool.uv]
 default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
