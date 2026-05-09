@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from PySide6.QtCore import QCoreApplication
 
-from single_piece_qml_client.backend import DemoBackend
+from single_piece_qml_client.backend import DemoBackend, RuntimeState
 
 
 @pytest.fixture(scope="module")
@@ -42,7 +42,7 @@ def test_reconnect_enables_standby_start(qt_app: QCoreApplication) -> None:
 def test_save_parameter_is_blocked_when_running(qt_app: QCoreApplication) -> None:
     backend = DemoBackend()
     backend.reconnect()
-    backend._apply_runtime_state(backend.__class__.__mro__[0].__dict__["__annotations__"] if False else __import__("single_piece_qml_client.backend", fromlist=["RuntimeState"]).RuntimeState.RUNNING)
+    backend._apply_runtime_state(RuntimeState.RUNNING)
 
     assert backend.runtime["canSaveParameter"] is False
 
