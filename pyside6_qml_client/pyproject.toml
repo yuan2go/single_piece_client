@@ -28,6 +28,7 @@ target-version = "py312"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
 ignore = [
+    "E501", # QML bridge code and industrial UI constants often use long literals.
     "N802", # Qt/PySide API names use camelCase.
 ]
 
