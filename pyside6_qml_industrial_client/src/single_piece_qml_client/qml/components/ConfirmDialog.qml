@@ -11,11 +11,18 @@ Popup {
     property string tone: "danger"
     signal confirmed()
 
+    parent: Overlay.overlay
     modal: true
     focus: true
     closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
     width: 460
     height: 260
+    x: Math.round((Overlay.overlay.width - width) / 2)
+    y: Math.round((Overlay.overlay.height - height) / 2)
+
+    Overlay.modal: Rectangle {
+        color: "#9907111D"
+    }
 
     background: Rectangle {
         radius: 12
