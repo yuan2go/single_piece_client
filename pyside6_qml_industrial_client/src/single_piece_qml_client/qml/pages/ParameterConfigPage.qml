@@ -6,11 +6,24 @@ import "../components"
 
 Rectangle {
     id: root
+    property var runtimeData: ({})
+    readonly property bool canSave: runtimeData.canSaveParameter === true
+
     color: "#0B1623"
 
     readonly property var categories: [
         "设备结构", "速度与节拍", "分离算法", "视觉与相机", "剔除规则", "通讯配置", "显示与存储", "高级维护"
     ]
+
+    ConfirmDialog {
+        id: saveConfirmDialog
+        anchors.centerIn: Overlay.overlay
+        title: "确认保存参数？"
+        message: "本次保存将写入当前配置。设备结构、通讯、算法和剔除规则属于生产高影响参数。\n\n请确认设备处于离线或待机状态，并已完成现场沟通。"
+        confirmText: "保存配置"
+        tone: "primary"
+        onConfirmed: backend.saveParameters()
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -20,9 +33,16 @@ Rectangle {
         RowLayout {
             Layout.fillWidth: true
             Text { text: "参数配置"; color: "#E5EDF5"; font.pixelSize: 20; font.weight: Font.DemiBold }
-            Text { text: "运行中只读；离线或待机状态才允许保存。"; color: "#EB5757"; font.pixelSize: 13 }
+            Text {
+                text: root.canSave ? "当前允许保存；高风险参数仍需确认。" : "运行中只读；离线或待机状态才允许保存。"
+                color: root.canSave ? "#21C36B" : "#EB5757"
+                font.pixelSize: 13
+            }
             Item { Layout.fillWidth: true }
-            StatusBadge { text: "当前：离线"; tone: "offline" }
+            StatusBadge {
+                text: "当前：" + (runtimeData.state || "--")
+                tone: root.canSave ? "info" : "critical"
+            }
             StatusBadge { text: "待保存 0"; tone: "info" }
         }
 
@@ -98,6 +118,7 @@ Rectangle {
                             color: "#0E1A29"
                             border.color: modelData.risk === "高" ? "#7A2A36" : "#26384A"
                             border.width: 1
+                            opacity: root.canSave ? 1.0 : 0.72
 
                             ColumnLayout {
                                 anchors.fill: parent
@@ -130,9 +151,14 @@ Rectangle {
                 RowLayout {
                     Layout.fillWidth: true
                     Item { Layout.fillWidth: true }
-                    IndustrialButton { Layout.preferredWidth: 140; text: "从服务器重新加载"; tone: "neutral" }
-                    IndustrialButton { Layout.preferredWidth: 110; text: "放弃修改"; tone: "neutral" }
-                    IndustrialButton { Layout.preferredWidth: 120; text: "保存配置"; available: true }
+                    IndustrialButton { Layout.preferredWidth: 140; text: "从服务器重新加载"; tone: "neutral"; available: root.canSave }
+                    IndustrialButton { Layout.preferredWidth: 110; text: "放弃修改"; tone: "neutral"; available: root.canSave }
+                    IndustrialButton {
+                        Layout.preferredWidth: 120
+                        text: "保存配置"
+                        available: root.canSave
+                        onClicked: saveConfirmDialog.open()
+                    }
                 }
             }
 
