@@ -17,7 +17,6 @@ Rectangle {
 
     ConfirmDialog {
         id: saveConfirmDialog
-        anchors.centerIn: Overlay.overlay
         title: "确认保存参数？"
         message: "本次保存将写入当前配置。设备结构、通讯、算法和剔除规则属于生产高影响参数。\n\n请确认设备处于离线或待机状态，并已完成现场沟通。"
         confirmText: "保存配置"
