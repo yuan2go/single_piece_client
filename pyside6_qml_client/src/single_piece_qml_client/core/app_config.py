@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -41,9 +41,9 @@ class StorageConfig:
 class AppConfig:
     profile: str = "production"
     demo_mode: bool = True
-    ui: UiConfig = UiConfig()
-    plc: PlcConfig = PlcConfig()
-    storage: StorageConfig = StorageConfig()
+    ui: UiConfig = field(default_factory=UiConfig)
+    plc: PlcConfig = field(default_factory=PlcConfig)
+    storage: StorageConfig = field(default_factory=StorageConfig)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
