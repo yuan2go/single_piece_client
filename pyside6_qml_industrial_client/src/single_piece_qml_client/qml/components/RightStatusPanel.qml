@@ -13,7 +13,6 @@ Rectangle {
 
     ConfirmDialog {
         id: stopConfirmDialog
-        anchors.centerIn: Overlay.overlay
         title: "确认停止当前设备？"
         message: "停止后将中断当前供包流程，可能影响正在处理的包裹。\n\n请确认现场人员已经沟通完成，且当前停止操作符合生产流程。"
         confirmText: "确认停止"
