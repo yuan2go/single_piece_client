@@ -59,7 +59,9 @@ ApplicationWindow {
 
                 DeviceDiagnosisPage {}
 
-                ParameterConfigPage {}
+                ParameterConfigPage {
+                    runtimeData: backend.runtime
+                }
 
                 LogRecordPage {
                     events: backend.events
@@ -83,5 +85,12 @@ ApplicationWindow {
             Layout.preferredHeight: 180
             events: backend.events
         }
+    }
+
+    Toast {
+        toastData: backend.toast
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: parent.top
+        anchors.topMargin: 78
     }
 }
