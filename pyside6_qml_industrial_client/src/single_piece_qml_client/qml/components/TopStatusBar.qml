@@ -5,6 +5,20 @@ Rectangle {
     id: root
     property var runtimeData: ({})
 
+    function stateDot(value) {
+        if (value === "在线" || value === "正常" || value === "运行中" || value === "待机") return "normal"
+        if (String(value).indexOf("/") >= 0 && String(value).indexOf("4/4") < 0) return "partial"
+        if (value === "故障" || value === "离线") return "offline"
+        return "offline"
+    }
+
+    function stateTone(value) {
+        if (value === "运行中" || value === "待机") return "success"
+        if (value === "启动中" || value === "停止中") return "warning"
+        if (value === "故障") return "critical"
+        return "offline"
+    }
+
     color: "#08111D"
     border.color: "#26384A"
     border.width: 1
@@ -29,15 +43,15 @@ Rectangle {
             font.pixelSize: 14
         }
 
-        StatusBadge { text: "状态：" + (runtimeData.state || "--"); tone: "offline" }
+        StatusBadge { text: "状态：" + (runtimeData.state || "--"); tone: root.stateTone(runtimeData.state) }
         StatusBadge { text: "模式：" + (runtimeData.mode || "--"); tone: "info" }
 
-        RowLayout { spacing: 6; StatusDot { state: "offline" }; Text { text: "PLC：" + (runtimeData.plcState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
-        RowLayout { spacing: 6; StatusDot { state: "partial" }; Text { text: "相机：" + (runtimeData.cameraState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
-        RowLayout { spacing: 6; StatusDot { state: "normal" }; Text { text: "光电：" + (runtimeData.photoeyeState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
-        RowLayout { spacing: 6; StatusDot { state: "offline" }; Text { text: "电柜：" + (runtimeData.cabinetState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
+        RowLayout { spacing: 6; StatusDot { state: root.stateDot(runtimeData.plcState) }; Text { text: "PLC：" + (runtimeData.plcState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
+        RowLayout { spacing: 6; StatusDot { state: root.stateDot(runtimeData.cameraState) }; Text { text: "相机：" + (runtimeData.cameraState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
+        RowLayout { spacing: 6; StatusDot { state: root.stateDot(runtimeData.photoeyeState) }; Text { text: "光电：" + (runtimeData.photoeyeState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
+        RowLayout { spacing: 6; StatusDot { state: root.stateDot(runtimeData.cabinetState) }; Text { text: "电柜：" + (runtimeData.cabinetState || "--"); color: "#E5EDF5"; font.pixelSize: 14 } }
 
-        StatusBadge { text: "报警：" + (runtimeData.alarmCount || 0); tone: "critical" }
+        StatusBadge { text: "报警：" + (runtimeData.alarmCount || 0); tone: (runtimeData.alarmCount || 0) > 0 ? "critical" : "success" }
 
         Item { Layout.fillWidth: true }
 
