@@ -8,22 +8,19 @@ from PySide6.QtCore import QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
+from single_piece_qml_client.controllers.application_controller import ApplicationController
 from single_piece_qml_client.core.app_config import ConfigLoadError, load_config
 from single_piece_qml_client.core.database import Database, migrate
 from single_piece_qml_client.core.logging_config import configure_logging
 from single_piece_qml_client.core.paths import resolve_paths
-from single_piece_qml_client.main import Backend
+from single_piece_qml_client.services.log_service import LogService
+from single_piece_qml_client.services.state_service import StateService
 
 logger = logging.getLogger(__name__)
 
 
 def run() -> int:
-    """Production entrypoint.
-
-    The current QML client still exposes the UI-facing Backend class from main.py.
-    This launcher wraps it with production startup concerns:
-    configuration loading, path management, SQLite migration, WAL setup and logging.
-    """
+    """Production entrypoint with explicit startup phases."""
 
     paths = resolve_paths()
     configure_logging(paths.log_dir)
@@ -48,7 +45,10 @@ def run() -> int:
     os.environ["SPC_CLIENT_DB"] = str(paths.database_path)
 
     app = QGuiApplication(sys.argv)
-    backend = Backend(paths.project_root)
+    log_service = LogService(database, config.storage)
+    state_service = StateService(database)
+    backend = ApplicationController(config, log_service, state_service)
+
     engine = QQmlApplicationEngine()
     engine.rootContext().setContextProperty("backend", backend)
     engine.load(QUrl.fromLocalFile(str(paths.qml_main)))
