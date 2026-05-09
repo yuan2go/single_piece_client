@@ -1,0 +1,18 @@
+[Unit]
+Description=Single Piece Separation QML Client
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/single_piece_client/pyside6_qml_client
+ExecStart=%h/.local/bin/uv run single-piece-qml-client
+Restart=on-failure
+RestartSec=5
+Environment=QT_QUICK_CONTROLS_STYLE=Basic
+Environment=SPC_CLIENT_RUNTIME_DIR=%h/.local/share/single-piece-qml-client/runtime
+Environment=SPC_CLIENT_CONFIG_DIR=%h/.config/single-piece-qml-client
+Environment=SPC_CLIENT_LOG_DIR=%h/.local/state/single-piece-qml-client/logs
+
+[Install]
+WantedBy=default.target
