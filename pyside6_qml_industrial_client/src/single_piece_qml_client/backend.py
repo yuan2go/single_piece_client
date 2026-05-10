@@ -25,6 +25,10 @@ class DemoBackend(QObject):
     """
 
     runtimeChanged = Signal()
+    runtimeSummaryChanged = Signal()
+    trackDevicesChanged = Signal()
+    productionStatsChanged = Signal()
+    hardwareStatusChanged = Signal()
     beltCellsChanged = Signal()
     packagesChanged = Signal()
     kpisChanged = Signal()
@@ -54,6 +58,113 @@ class DemoBackend(QObject):
             "canReconnect": True,
             "canSaveParameter": True,
         }
+        self._runtime_summary = {
+            "totalPackages": "12,664",
+            "hourlyRate": "3,200",
+            "runningTime": "02:18:45",
+            "currentPackages": "94",
+            "statPackages": "12,664",
+        }
+        self._track_devices = {
+            "feederBelt": {
+                "title": "供包皮带线",
+                "speed": "1.20",
+                "unit": "m/s",
+                "packageCount": "110",
+                "status": "normal",
+                "statusText": "运行中",
+            },
+            "chute": {
+                "title": "滑槽",
+                "speed": "1.00",
+                "unit": "m/s",
+                "packageCount": "--",
+                "status": "normal",
+                "statusText": "开启",
+            },
+            "bufferBelt1": {
+                "title": "缓存1皮带线",
+                "speed": "1.30",
+                "unit": "m/s",
+                "packageCount": "28",
+                "status": "normal",
+                "statusText": "运行中",
+            },
+            "bufferBelt2": {
+                "title": "缓存2皮带线",
+                "speed": "0.70",
+                "unit": "m/s",
+                "packageCount": "16",
+                "status": "normal",
+                "statusText": "运行中",
+            },
+            "alignment": {
+                "title": "居中机",
+                "speed": "1.20",
+                "unit": "m/s",
+                "packageCount": "--",
+                "status": "normal",
+                "statusText": "运行中",
+            },
+            "rejector": {
+                "title": "剔除机",
+                "speed": "1.20",
+                "unit": "m/s",
+                "packageCount": "--",
+                "status": "normal",
+                "statusText": "运行中",
+            },
+            "supply": {
+                "title": "供包台",
+                "packageCount": "65",
+                "status": "normal",
+                "statusText": "正常",
+            },
+            "manual": {
+                "title": "人工线",
+                "packageCount": "8",
+                "status": "normal",
+                "statusText": "正常",
+            },
+            "loop": {
+                "title": "循环线",
+                "packageCount": "12",
+                "status": "normal",
+                "statusText": "正常",
+            },
+        }
+        self._production_stats = {
+            "mainline": [
+                {"label": "包裹总数", "value": "12,664"},
+                {"label": "平均包裹长度", "value": "110 mm"},
+                {"label": "每小时效率", "value": "3,200 件/小时"},
+            ],
+            "supply": [
+                {"label": "供包台包裹数量", "value": "65"},
+                {"label": "供包台小时效率", "value": "3,120 件/小时"},
+            ],
+            "manual": [
+                {"label": "人工线数量", "value": "8"},
+                {"label": "人工线比例", "value": "0.06%"},
+            ],
+            "analysis": [
+                {"label": "重叠件数量", "value": "45"},
+                {"label": "异形件数量", "value": "38"},
+                {"label": "易滑件数量", "value": "22"},
+                {"label": "超长件数量", "value": "6"},
+            ],
+            "loop": [
+                {"label": "循环件数量", "value": "12"},
+                {"label": "循环线比例", "value": "0.09%"},
+            ],
+        }
+        self._hardware_status = [
+            {"name": "modbus通信", "fault": True, "message": "离线"},
+            {"name": "PLC通信", "fault": False, "message": "-"},
+            {"name": "2D相机", "fault": False, "message": "-"},
+            {"name": "3D相机", "fault": False, "message": "-"},
+            {"name": "光电", "fault": False, "message": "-"},
+        ]
         self._toast = {"visible": False, "level": "info", "message": ""}
         self._belt_cells = self._make_belt_cells()
         self._packages = [
@@ -83,16 +194,10 @@ class DemoBackend(QObject):
             },
         ]
         self._kpis = [
-            {"label": "包裹总数", "value": "12,456", "unit": "件", "primary": True},
+            {"label": "包裹总数", "value": "12,664", "unit": "件", "primary": True},
             {"label": "小时效率", "value": "3,200", "unit": "件/小时", "primary": True},
-            {"label": "主线数量", "value": "11,820", "unit": "", "primary": False},
-            {"label": "供包台数量", "value": "11,760", "unit": "", "primary": False},
-            {"label": "人工线数量", "value": "320", "unit": "", "primary": False},
-            {"label": "人工线比例", "value": "2.6", "unit": "%", "primary": False},
-            {"label": "循环线数量", "value": "280", "unit": "", "primary": False},
-            {"label": "循环线比例", "value": "2.2", "unit": "%", "primary": False},
-            {"label": "重叠件数量", "value": "45", "unit": "", "primary": False},
-            {"label": "异形件数量", "value": "38", "unit": "", "primary": False},
+            {"label": "当前包裹", "value": "94", "unit": "件", "primary": False},
+            {"label": "运行时间", "value": "02:18:45", "unit": "", "primary": False},
         ]
         self._alarms = [
             {
@@ -270,6 +375,11 @@ class DemoBackend(QObject):
             if alarm["target"] == "PLC":
                 alarm["recovered"] = True
                 alarm["acknowledged"] = True
+        for row in self._hardware_status:
+            if row["name"] == "modbus通信":
+                row["fault"] = False
+                row["message"] = "-"
+        self.hardwareStatusChanged.emit()
         self._refresh_alarm_count()
         self._apply_runtime_state(RuntimeState.STANDBY)
         self._add_event("通讯", "PLC", "重新连接成功，PLC 与电柜恢复在线")
@@ -295,6 +405,22 @@ class DemoBackend(QObject):
     @Property("QVariantMap", notify=runtimeChanged)
     def runtime(self) -> dict[str, object]:
         return self._runtime
+
+    @Property("QVariantMap", notify=runtimeSummaryChanged)
+    def runtimeSummary(self) -> dict[str, object]:
+        return self._runtime_summary
+
+    @Property("QVariantMap", notify=trackDevicesChanged)
+    def trackDevices(self) -> dict[str, object]:
+        return self._track_devices
+
+    @Property("QVariantMap", notify=productionStatsChanged)
+    def productionStats(self) -> dict[str, object]:
+        return self._production_stats
+
+    @Property("QVariantList", notify=hardwareStatusChanged)
+    def hardwareStatus(self) -> list[dict[str, object]]:
+        return self._hardware_status
 
     @Property("QVariantList", notify=beltCellsChanged)
     def beltCells(self) -> list[dict[str, object]]:
